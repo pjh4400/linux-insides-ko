@@ -4,9 +4,9 @@ Kernel booting process. Part 6.
 Introduction
 --------------------------------------------------------------------------------
 
-This is the sixth part of the `Kernel booting process` series. In the [previous part](linux-bootstrap-5.md) we have seen the end of the kernel boot process. But we have skipped some important advanced parts.
+커널 부팅 프로세스 시리즈의 여섯 번째 부분입니다. [이전 부분] (linux-bootstrap-5.md)에서 커널 부팅 프로세스의 끝을 보았습니다. 그러나 중요한 고급 부분을 건너 뛰었습니다.
 
-As you may remember the entry point of the Linux kernel is the `start_kernel` function from the [main.c](https://github.com/torvalds/linux/blob/v4.16/init/main.c) source code file started to execute at `LOAD_PHYSICAL_ADDR` address. This address depends on the `CONFIG_PHYSICAL_START` kernel configuration option which is `0x1000000` by default:
+리눅스 커널의 진입점은 LOAD_PHYSICAL_ADDR 주소로 실행되기 시작하는 소스코드 파일 [main.c] (https://github.com/torvalds/linux/blob/v4.16/init/main.c) 의 `start_kernel` 함수입니다. 소스 코드 파일이 LOAD_PHYSICAL_ADDR 주소에서 실행되기 시작했습니다. 이 주소는 디폴트로`0x1000000` 인 커널 구성 옵션 `CONFIG_PHYSICAL_START` 에 따라 다릅니다.:
 
 ```
 config PHYSICAL_START
@@ -19,18 +19,18 @@ config PHYSICAL_START
       ...
 ```
 
-This value may be changed during kernel configuration, but also load address can be selected as a random value. For this purpose the `CONFIG_RANDOMIZE_BASE` kernel configuration option should be enabled during kernel configuration.
+이 값은 커널 구성 중에 변경 될 수 있지만 로드 주소는 임의의 값으로 선택할 수 있습니다. 이를 위해 커널 구성 중에 커널 구성 옵션 `CONFIG_RANDOMIZE_BASE` 을 활성화해야합니다.
 
-In this case a physical address at which Linux kernel image will be decompressed and loaded will be randomized. This part considers the case when this option is enabled and load address of the kernel image will be randomized for [security reasons](https://en.wikipedia.org/wiki/Address_space_layout_randomization).
+이 경우 Linux 커널 이미지를 압축 해제하고 로드할 실제 주소는 랜덤으로 지정됩니다. 이 부분에서는 이 옵션이 활성화되어있고 커널 이미지의 로드 주소가 [보안상의 이유로](https://en.wikipedia.org/wiki/Address_space_layout_randomization) 랜덤한 경우를 고려합니다.
 
-Initialization of page tables
+페이지 테이블의 초기화
 --------------------------------------------------------------------------------
 
-Before the kernel decompressor will start to find random memory range where the kernel will be decompressed and loaded, the identity mapped page tables should be initialized. If a [bootloader](https://en.wikipedia.org/wiki/Booting) used [16-bit or 32-bit boot protocol](https://github.com/torvalds/linux/blob/v4.16/Documentation/x86/boot.txt), we already have page tables. But in any case, we may need new pages by demand if the kernel decompressor selects memory range outside of them. That's why we need to build new identity mapped page tables.
+커널 압축 해제 프로그램이 커널을 압축 해제하고 로드할 임의의 메모리 범위를 찾기 시작하기 전에 아이디 매핑 페이지 테이블을 초기화해야합니다. [bootloader] (https://en.wikipedia.org/wiki/Booting)에서 [16 비트 또는 32 비트 부트 프로토콜]을 사용하는 경우 (https://github.com/torvalds/linux/blob/v4.16/Documentation/x86/boot.txt)에 이미 페이지 테이블이 있습니다. 그러나 커널 압축 해제 프로그램이 메모리 범위 밖에서 메모리 범위를 선택하는 경우 필요에 따라 새 페이지가 필요할 수 있습니다. 그렇기 때문에 ID 매핑 페이지 테이블을 새로 만들어야합니다.
 
-Yes, building of identity mapped page tables is the one of the first step during randomization of load address. But before we will consider it, let's try to remember where did we come from to this point.
+네, ID 매핑 된 페이지 테이블을 작성하는 것은 로드 주소를 랜덤화하는 첫 번째 단계 중 하나입니다. 그러나 우리가 그것을 고려하기 전에, 우리가 어디에서 왔는지 기억해 봅시다.
 
-In the [previous part](linux-bootstrap-5.md), we saw transition to [long mode](https://en.wikipedia.org/wiki/Long_mode) and jump to the kernel decompressor entry point - `extract_kernel` function. The randomization stuff starts here from the call of the:
+우리는 [이전 부분] (linux-bootstrap-5.md)에서 [long mode] (https://en.wikipedia.org/wiki/Long_mode)을 보았고, 커널 압축 해제 진입점인`extract_kernel` 함수로 이동합니다. 랜덤화는 다음 호출 함수:
 
 ```C
 void choose_random_location(unsigned long input,
@@ -41,7 +41,7 @@ void choose_random_location(unsigned long input,
 {}
 ```
 
-function. As you may see, this function takes following five parameters:
+에서 시작합니다. 보시다시피, 이 기능에는 다음과 같은 5 가지 매개 변수가 사용됩니다.
 
   * `input`;
   * `input_size`;
@@ -49,7 +49,7 @@ function. As you may see, this function takes following five parameters:
   * `output_isze`;
   * `virt_addr`.
 
-Let's try to understand what these parameters are. The first `input` parameter came from parameters of the `extract_kernel` function from the [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/misc.c) source code file:
+이 매개 변수가 무엇인지 이해해봅시다. 첫 번째 `input` 매개 변수는 [arch/x86/boot/compressed/misc.c] (https://github.com/torvalds/linux/blob/v4.16/arch)의 `extract_kernel` 함수의 매개 변수에서 가져왔습니다. /x86/boot/compressed/misc.c) 소스 코드 파일 :
 
 ```C
 asmlinkage __visible void *extract_kernel(void *rmode, memptr heap,
@@ -71,13 +71,14 @@ asmlinkage __visible void *extract_kernel(void *rmode, memptr heap,
 }
 ```
 
-This parameter is passed from assembler code:
+이 매개 변수는 어셈블러 코드에서 전달됩니다.:
 
 ```C
 leaq	input_data(%rip), %rdx
 ```
 
-from the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S). The `input_data` is generated by the little [mkpiggy](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/mkpiggy.c) program. If you have compiled linux kernel source code under your hands, you may find the generated file by this program which should be placed in the `linux/arch/x86/boot/compressed/piggy.S`. In my case this file looks:
+[arch/x86/boot/compressed/head_64.S] (https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S)에서 `input_data`는 작은 [mkpiggy] (https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/mkpiggy.c) 프로그램에 의해 생성됩니다. 리눅스 커널 소스 코드를 컴파일했다면 `linux/arch/x86/boot/compressed/piggy.S`에 있는 이 프로그램에 의해 생성 된 파일을 찾을 수 있습니다. 필자의 경우 이 파일은 다음과 같습니다.:
+
 
 ```assembly
 .section ".rodata..compressed","a",@progbits
@@ -90,16 +91,15 @@ input_data:
 .incbin "arch/x86/boot/compressed/vmlinux.bin.gz"
 input_data_end:
 ```
+보시다시피 4 개의 전역 기호가 포함되어 있습니다. 압축된, 압축되지 않은 `vmlinux.bin.gz`의 크기인 처음 두 `z_input_len` 와 `z_output_len`, 세 번째는 우리의 `input_data` 이며, 알 수 있듯이 raw binary 형식의 Linux 커널 이미지를 가리킵니다(모든 디버깅 기호, 주석 및 재배치 정보가 제거됨). 마지막은 `input_data_end` 이며, 압축된 리눅스 이미지의 끝을 가리킵니다.
 
-As you may see it contains four global symbols. The first two `z_input_len` and `z_output_len` which are sizes of compressed and uncompressed `vmlinux.bin.gz`. The third is our `input_data` and as you may see it points to linux kernel image in raw binary format (all debugging symbols, comments and relocation information are stripped). And the last `input_data_end` points to the end of the compressed linux image.
+따라서 'choose_random_location'함수의 첫 번째 매개 변수는 `piggy.o` 오브젝트 파일에 임베드 된 압축 커널 이미지에 대한 포인터입니다.
 
-So, our first parameter of the `choose_random_location` function is the pointer to the compressed kernel image that is embedded into the `piggy.o` object file.
+`choose_random_location` 함수의 두 번째 매개 변수는 우리가 지금 본 `z_input_len`입니다.
 
-The second parameter of the `choose_random_location` function is the `z_input_len` that we have seen just now.
+'choose_random_location'함수의 세 번째 및 네 번째 매개 변수는 각각 압축 해제 된 커널 이미지를 배치할 위치와 압축 해제 된 커널 이미지의 길이입니다. 압축 해제 된 커널을 넣을 주소는 [arch/x86/boot/compressed/head_64.S] (https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) 에서 나왔으며, 2MB 경계에 정렬 된 `startup_32`의 주소입니다. 압축 해제 된 커널의 크기는 동일한 `piggy.S` 에서 왔으며 `z_output_len` 입니다.
 
-The third and fourth parameters of the `choose_random_location` function are address where to place decompressed kernel image and the length of decompressed kernel image respectively. The address where to put decompressed kernel came from [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) and it is address of the `startup_32` aligned to 2 megabytes boundary. The size of the decompressed kernel came from the same `piggy.S` and it is `z_output_len`.
-
-The last parameter of the `choose_random_location` function is the virtual address of the kernel load address. As we may see, by default it coincides with the default physical load address:
+'choose_random_location' 함수의 마지막 매개 변수는 커널 로드 주소의 가상 주소입니다. 보시다시피 기본적으로 기본 실제 로드 주소와 일치합니다.:
 
 ```C
 unsigned long virt_addr = LOAD_PHYSICAL_ADDR;
@@ -113,7 +113,7 @@ which depends on kernel configuration:
 				& ~(CONFIG_PHYSICAL_ALIGN - 1))
 ```
 
-Now, as we considered parameters of the `choose_random_location` function, let's look at implementation of it. This function starts from the checking of `nokaslr` option in the kernel command line:
+이제 'choose_random_location' 함수의 매개 변수를 이해했으므로 구현을 살펴 보겠습니다. 이 함수는 커널 명령 행에서 `nokaslr` 옵션을 체크하는 것으로 시작합니다 :
 
 ```C
 if (cmdline_find_option_bool("nokaslr")) {
@@ -122,7 +122,7 @@ if (cmdline_find_option_bool("nokaslr")) {
 }
 ```
 
-and if the options was given we exit from the `choose_random_location` function ad kernel load address will not be randomized. Related command line options can be found in the [kernel documentation](https://github.com/torvalds/linux/blob/v4.16/Documentation/admin-guide/kernel-parameters.rst):
+그리고 옵션이 주어지면 우리는`choose_random_location` 함수에서 나가고 커널 로드 주소는 랜덤화 되지 않을 것입니다. 관련 명령 행 옵션은 [커널 문서] (https://github.com/torvalds/linux/blob/v4.16/Documentation/admin-guide/kernel-parameters.rst)에서 찾을 수 있습니다.:
 
 ```
 kaslr/nokaslr [X86]
@@ -134,11 +134,13 @@ kASLR is disabled by default. When kASLR is enabled,
 hibernation will be disabled.
 ```
 
-Let's assume that we didn't pass `nokaslr` to the kernel command line and the `CONFIG_RANDOMIZE_BASE` kernel configuration option is enabled. In this case we add `kASLR` flag to kernel load flags:
+`nokaslr`을 커널 명령 행에 전달하지 않고 `CONFIG_RANDOMIZE_BASE` 커널 구성 옵션이 활성화되었다고 가정해 봅시다. 이 경우 커널로드 플래그에 'kASLR'플래그를 추가합니다.
 
 ```C
 boot_params->hdr.loadflags |= KASLR_FLAG;
 ```
+
+그리고 다음 단계에서 호출 되는 함수:
 
 and the next step is the call of the:
 
@@ -146,7 +148,7 @@ and the next step is the call of the:
 initialize_identity_maps();
 ```
 
-function which is defined in the [arch/x86/boot/compressed/kaslr_64.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/kaslr_64.c) source code file. This function starts from initialization of `mapping_info` an instance of the `x86_mapping_info` structure:
+는 [arch/x86/boot/compressed/kaslr_64.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/kaslr_64.c) 소스코드 파일에 정의되어 있습니다. 이 함수는`x86_mapping_info` 구조의 인스턴스인 `mapping_info`의 초기화에서 시작합니다.
 
 ```C
 mapping_info.alloc_pgt_page = alloc_pgt_page;
@@ -155,7 +157,7 @@ mapping_info.page_flag = __PAGE_KERNEL_LARGE_EXEC | sev_me_mask;
 mapping_info.kernpg_flag = _KERNPG_TABLE;
 ```
 
-The `x86_mapping_info` structure is defined in the [arch/x86/include/asm/init.h](https://github.com/torvalds/linux/blob/v4.16/arch/x86/include/asm/init.h) header file and looks:
+`x86_mapping_info` 구조는 [arch/x86/include/asm/init.h](https://github.com/torvalds/linux/blob/v4.16/arch/x86/include/asm/init.h) 헤더 파일과 모양에 정의되어 있습니다.:
 
 ```C
 struct x86_mapping_info {
@@ -395,7 +397,7 @@ That's all.
 Conclusion
 --------------------------------------------------------------------------------
 
-This is the end of the sixth and the last part about linux kernel booting process. We will not see posts about kernel booting anymore (maybe updates to this and previous posts), but there will be many posts about other kernel internals. 
+This is the end of the sixth and the last part about linux kernel booting process. We will not see posts about kernel booting anymore (maybe updates to this and previous posts), but there will be many posts about other kernel internals.
 
 Next chapter will be about kernel initialization and we will see the first steps in the Linux kernel initialization code.
 
