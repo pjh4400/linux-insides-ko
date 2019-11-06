@@ -1,63 +1,63 @@
-Kernel booting process. Part 2.
+커널 부팅 과정. Part 2
 ================================================================================
 
-First steps in the kernel setup
+커널 구성의 첫 단계
 --------------------------------------------------------------------------------
 
-We started to dive into the linux kernel's insides in the previous [part](linux-bootstrap-1.md) and saw the initial part of the kernel setup code. We stopped at the first call to the `main` function (which is the first function written in C) from [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/main.c).
+우리는 [지난 시간](linux-bootstrap-1.md)에 리눅스 커널의 내부로 진입을 시작했고 커널 구성 코드의 일부를 살펴봤습니다. 우리는 [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/main.c)의 `main`함수를 처음으로 호출하는 데에서 멈췄었습니다. (C로 짜여진 첫 번째 함수죠)
 
-In this part, we will continue to research the kernel setup code and go over
-* what `protected mode` is,
-* the transition into it,
-* the initialization of the heap and the console,
-* memory detection, CPU validation and keyboard initialization
-* and much much more.
+이번 시간엔, 커널 구성 코드를 더 파헤처보고 아래 것들에 대해 알아봅시다.
+* `protected mode`란 무엇인가
+* `protected mode`로의 이행
+* 힙과 콘솔의 초기화
+* 메모리 탐지, CPU 유효성 검사 그리고 키보드 초기화
+* 그리고 많고 많은 것들
 
-So, Let's go ahead.
+그럼 가시죠.
 
-Protected mode
+보호 모드(Protected mode)
 --------------------------------------------------------------------------------
 
-Before we can move to the native Intel64 [Long Mode](http://en.wikipedia.org/wiki/Long_mode), the kernel must switch the CPU into protected mode.
+네이티브 Intel64 [Long Mode](http://en.wikipedia.org/wiki/Long_mode)로 가기 전에, 커널은 CPU를 보호 모드로 전환해야만 합니다.
 
-What is [protected mode](https://en.wikipedia.org/wiki/Protected_mode)? Protected mode was first added to the x86 architecture in 1982 and was the main mode of Intel processors from the [80286](http://en.wikipedia.org/wiki/Intel_80286) processor until Intel 64 and long mode came.
+[보호 모드](https://ko.wikipedia.org/wiki/%EB%B3%B4%ED%98%B8_%EB%AA%A8%EB%93%9C)([protected mode](https://en.wikipedia.org/wiki/Protected_mode))가 뭘까요? 보호 모드는 1982년에 x86 아키텍처에 처음 추가되었고, [80286](http://en.wikipedia.org/wiki/Intel_80286) 프로세서부터 Intel 64와 long mode가 등장하기 전까지 인텔 프로세들의 메인 모드였습니다.
 
-The main reason to move away from [Real mode](http://wiki.osdev.org/Real_Mode) is that there is very limited access to the RAM. As you may remember from the previous part, there are only 2<sup>20</sup> bytes or 1 Megabyte, sometimes even only 640 Kilobytes of RAM available in the Real mode.
+[리얼 모드](https://ko.wikipedia.org/wiki/%EB%A6%AC%EC%96%BC_%EB%AA%A8%EB%93%9C)([Real mode](http://wiki.osdev.org/Real_Mode))에서 옮겨온 가장 큰 이유는 RAM에 굉장히 한정적인 접근만 가능했기 때문이었습니다. 이전 시간에서 얘기했던 것처럼, 오직 2<sup>20</sup> 바이트 또는 1 메가바이트만 가능했고, 어떤 때는 리얼 모드에서 오로지 RAM의 640 킬로바이트만 사용가능했습니다.
 
-Protected mode brought many changes, but the main one is the difference in memory management. The 20-bit address bus was replaced with a 32-bit address bus. It allowed access to 4 Gigabytes of memory vs the 1 Megabyte in real mode. Also, [paging](http://en.wikipedia.org/wiki/Paging) support was added, which you can read about in the next sections.
+보호 모드는 많은 변화를 가져왔지만 그 중 메인은 메모리 관리의 변화였습니다. 20비트 주소 버스는 32비트 주소 버스로 교체되었습니다. 이는 실제 모드에서 1메가바이트만 접근가능했던 것과는 달리 4기가바이트에 달하는 메모리에 접근 가능하게 해주었습니다. 또한, [페이징]( [https://ko.wikipedia.org/wiki/%ED%8E%98%EC%9D%B4%EC%A7%95](https://ko.wikipedia.org/wiki/페이징) )([paging](http://en.wikipedia.org/wiki/Paging)) 지원이 추가되어, 페이징으로 다음 구역을 읽을 수 있게 되었습니다.
 
-Memory management in Protected mode is divided into two, almost independent parts:
+보호 모드의 메모리 관리는 거의 독립적인 두 부분으로 나뉩니다.
 
-* Segmentation
-* Paging
+* 분할 (세그먼트)
+* 페이징
 
-Here we will only talk about segmentation. Paging will be discussed in the next sections.
+여기서는 분할에 대해서만 다루고, 페이징은 다음 시간에 다루도록 하겠습니다.
 
-As you can read in the previous part, addresses consist of two parts in real mode:
+이전 시간에서 읽었듯, 리얼 모드에서 주소는 두 부분으로 구성됩니다.
 
-* Base address of the segment
-* Offset from the segment base
+* 세그먼트의 베이스 주소
+* 세그먼트 베이스로 부터의 오프셋
 
-And we can get the physical address if we know these two parts by:
+그리고 이 두 부분을 알고 있다면 다음과 같이 물리적 주소를 알 수 있습니다.
 
 ```
 PhysicalAddress = Segment Selector * 16 + Offset
 ```
 
-Memory segmentation was completely redone in protected mode. There are no 64 Kilobyte fixed-size segments. Instead, the size and location of each segment is described by an associated data structure called the _Segment Descriptor_. The segment descriptors are stored in a data structure called the `Global Descriptor Table` (GDT).
+보호 모드에서 메모리 세그먼트 방식은 완전히 재구성되었습니다. 64 킬로바이트의 고정 크기 세그먼트는 사라졌습니다. 대신에, 각 세그먼트의 크기와 위치는 _세그먼트 디스크립터(Segment Descriptor)_라는 자료구조에 기록되었습니다.  세그먼트 디스크립터는 `Global Descriptor Table` (GDT)라고 불리는 자료구조에 저장되었습니다.
 
-The GDT is a structure which resides in memory. It has no fixed place in the memory so, its address is stored in the special `GDTR` register. Later we will see how the GDT is loaded in the Linux kernel code. There will be an operation for loading it into memory, something like:
+GDT는 메모리 내에 존재하는 구조체입니다. GDT의 자리는 메모리 내에 고정되어 있지 않아서 그 주소가 특별한 `GDTR` 레지스터에 저장됩니다. 나중에 리눅스 커널 코드에서 어떻게 GDT가 로드되는지 살펴볼 겁니다. `lgdt`명령어가 베이스 주소와 GDT의 제한(크기)를 `GDTR` 레지스터에 가져오는 곳에 GDT를 메모리로 로드하기 위한 동작이 다음과 같이 있을 것입니다.
 
 ```assembly
 lgdt gdt
 ```
 
-where the `lgdt` instruction loads the base address and limit(size) of the global descriptor table to the `GDTR` register. `GDTR` is a 48-bit register and consists of two parts:
+ `GDTR` 는 48비트 레지스터이며 두 부분으로 이루어저 있습니다.
 
- * the size(16-bit) of the global descriptor table;
- * the address(32-bit) of the global descriptor table.
+ * GDT의 크기 (16-bit) ;
+ * GDT의 주소 (32-bit) .
 
-As mentioned above the GDT contains `segment descriptors` which describe memory segments.  Each descriptor is 64-bits in size. The general scheme of a descriptor is:
+위에서 언급한 것처럼, GDT는 메모리 세그먼트를 기록하는 `세그먼트 디스크립터`를 포함하고 있습니다.  각각의 디스크립터는 64비트의 크기를 갖고 있습니다. 세그먼트 디스크립터의 일반적인 구성은 다음과 같습니다:
 
 ```
  63         56         51   48    45           39        32 
@@ -75,27 +75,27 @@ As mentioned above the GDT contains `segment descriptors` which describe memory 
 ------------------------------------------------------------
 ```
 
-Don't worry, I know it looks a little scary after real mode, but it's easy. For example LIMIT 15:0 means that bits 0-15 of Limit are located at the beginning of the Descriptor. The rest of it is in LIMIT 19:16, which is located at bits 48-51 of the Descriptor. So, the size of Limit is 0-19 i.e 20-bits. Let's take a closer look at it:
+리얼 모드에서 넘어오니 좀 무서워보일 수 있지만 걱정 마세요, 사실 쉽습니다. 예를 들어 LIMIT 15:0 는 Limit의 0-15번째 비트가 디스크립터의 시작 부분에 위치한다는 것을 의미합니다. 나머지 부분들은 LIMIT 19:16에 들어있고, 이는 디스크립터의 48-51번째 비트에 위치해 있습니다. 그래서 Limit의 크기는 0-19 즉, 20 비트가 되는 것입니다. 이에 대해 조금 더 자세히 살펴봅시다.
 
-1. Limit[20-bits] is split between bits 0-15 and 48-51. It defines the `length_of_segment - 1`. It depends on the `G`(Granularity) bit.
+1. Limit[20 비트] 는 비트 0-15 와 48-51로 나누어집니다. 이는 `length_of_segment - 1` 값을 나타내고, `G`(Granularity) 비트에 의해 좌우됩니다.
 
-  * if `G` (bit 55) is 0 and the segment limit is 0, the size of the segment is 1 Byte
-  * if `G` is 1 and the segment limit is 0, the size of the segment is 4096 Bytes
-  * if `G` is 0 and the segment limit is 0xfffff, the size of the segment is 1 Megabyte
-  * if `G` is 1 and the segment limit is 0xfffff, the size of the segment is 4 Gigabytes
+  * 만약 `G` (비트 55) 가 0이고 segment limit도 0이면, 세그먼트의 크기는 1 Byte입니다.
+  * 만약 `G` 가 1이고 segment limit가 0이면, 세그먼트의 크기는 4096 Byte입니다.
+  * 만약 `G` 가 0이고 segment limit가 0xfffff이면, 세그먼트의 크기는 1 MByte입니다.
+  * 만약 `G` 가 1이고 segment limit가 0xfffff이면, 세그먼트의 크기는 4 GByte입니다.
 
-  So, what this means is
-  * if G is 0, Limit is interpreted in terms of 1 Byte and the maximum size of the segment can be 1 Megabyte.
-  * if G is 1, Limit is interpreted in terms of 4096 Bytes = 4 KBytes = 1 Page and the maximum size of the segment can be 4 Gigabytes. Actually, when G is 1, the value of Limit is shifted to the left by 12 bits. So, 20 bits + 12 bits = 32 bits and 2<sup>32</sup> = 4 Gigabytes.
+ 이말인 즉슨,
+  * 만약 G가 0이면, Limit 은 1 바이트로 해석되고, 세그먼트의 최대 크기는 1 메가바이트가 된다.
+  * 만약 G가 1이면, Limit 은 4096 Bytes = 4 KBytes = 1 Page 로 해석되고 세그먼트의 최대 크기는 4 기가바이트가 된다. 사실, G가 1일 때, Limit의 값은 왼쪽으로 12비트 이동(shift)된다. 그러므로 20 bit + 12 bit = 32 bit이고 2<sup>32</sup> = 4 Gigabytes이다.
 
-2. Base[32-bits] is split between bits 16-31, 32-39 and 56-63. It defines the physical address of the segment's starting location.
+2. Base[32-bits] 는 16-31번째, 32-39번째, 그리고 56-63번째 비트들 사이에서 쪼개진다. 이것은 세그먼트의 시작 위치의 물리적 주소를 나타낸다.
 
-3. Type/Attribute[5-bits] is represented by bits 40-44. It defines the type of segment and how it can be accessed.
-  * The `S` flag at bit 44 specifies the descriptor type. If `S` is 0 then this segment is a system segment, whereas if `S` is 1 then this is a code or data segment (Stack segments are data segments which must be read/write segments).
+3. Type/Attribute[5-bits] 는 40-44번째 비트로 나타내어진다. 이것은 세그먼트의 종류와 어떻게 접근 가능한지를 나타낸다.
+  * 44번째 비트의 `S` 플래그는 디스크립터의 종류를 특정합니다. 만약 `S`가 0이면 이 세그먼트는 시스템 세그먼트이고, 만약 `S`가 1이면 이것은 코드 혹은 데이터 세그먼트입니다. (스택 세그먼트는 데이터 세그먼트이고, 읽기/쓰기 세그먼트여야 합니다.).
 
-To determine if the segment is a code or data segment, we can check its Ex(bit 43) Attribute (marked as 0 in the above diagram). If it is 0, then the segment is a Data segment, otherwise, it is a code segment.
+특정 세그먼트가 코드 세그먼트인지 데이터 세그먼트인지 판별하기 위해서는, 그것의 Ex 속성(43번 비트)을 확인하면 됩니다 (위 다이어그램에는 0으로 표기되어있음). 만약 0이면, 그 세그먼트는 데이터 세그먼트이고, 그렇지 않다면 그건 코드 세그먼트입니다.
 
-A segment can be of one of the following types:
+세그먼트는 다양한 타입이 될 수 있는데 이는 다음과 같습니다.
 
 ```
 --------------------------------------------------------------------------------------
@@ -123,22 +123,22 @@ A segment can be of one of the following types:
 --------------------------------------------------------------------------------------
 ```
 
-As we can see the first bit(bit 43) is `0` for a _data_ segment and `1` for a _code_ segment. The next three bits (40, 41, 42) are either `EWA`(*E*xpansion *W*ritable *A*ccessible) or CRA(*C*onforming *R*eadable *A*ccessible).
-  * if E(bit 42) is 0, expand up, otherwise, expand down. Read more [here](http://www.sudleyplace.com/dpmione/expanddown.html).
-  * if W(bit 41)(for Data Segments) is 1, write access is allowed, and if it is 0, the segment is read-only. Note that read access is always allowed on data segments.
-  * A(bit 40) controls whether the segment can be accessed by the processor or not.
-  * C(bit 43) is the conforming bit(for code selectors). If C is 1, the segment code can be executed from a lower level privilege (e.g. user) level. If C is 0, it can only be executed from the same privilege level.
-  * R(bit 41) controls read access to code segments; when it is 1, the segment can be read from. Write access is never granted for code segments.
+위 표에서 볼 수 있듯, 첫 번째 비트(43번 비트)가  `0`이면 _데이터_ 세그먼트이고 `1`이면 _코드_ 세그먼트입니다. 다음 세 비트 (40, 41, 42)는 `EWA`(*E*xpansion *W*ritable *A*ccessible) 이거나 `CRA`(*C*onforming *R*eadable *A*ccessible)입니다.
+  * 만약 E(42번 비트)가 0이면, 위로 확장하고, 1이면 아래로 확장합니다. [여기](http://www.sudleyplace.com/dpmione/expanddown.html)서 더 알아보세요.
+  * 만약 (데이터 세그먼트인 경우에) W(41번 비트)가 1이라면, 쓰기 엑세스가 허용됩니다. 반대로 0일 경우엔, 읽기 전용이 됩니다.  데이터 세그먼트에서는 항상 읽기 액세스가 허용된다는 점에 유의하세요. 
+  * A(40번 비트)는 프로세서에서 세그먼트에 액세스할 수 있는지 여부를 제어합니다. 
+  * C(43번 비트)는 호환 비트입니다(코드 선택기의 경우). C가 1이면 낮은 수준 권한(예: 사용자)에서도 세그먼트 코드를 실행할 수 있습니다. C가 0이면 동등한 권한 레벨에서만 실행할 수 있습니다. 
+  * R(41번 비트)은 코드 세그먼트에 대한 읽기 액세스를 제어합니다. 이 값이 1이면 세그먼트를 읽을 수 있습니다. 코드 세그먼트에 대해서는 쓰기 액세스 권한이 부여되지 않습니다. 
 
-4. DPL[2-bits] (Descriptor Privilege Level) comprises the bits 45-46. It defines the privilege level of the segment. It can be 0-3 where 0 is the most privileged level.
+4. DPL[2비트] (Descriptor 권한 수준)은 45-46번 비트로 구성됩니다. 이것은 세그먼트의 권한 수준을 정의합니다. 0-3의 값을 가질 수 있는데 여기서 0이 가장 높은 권한 수준입니다. 
 
-5. The P flag(bit 47) indicates if the segment is present in memory or not. If P is 0, the segment will be presented as _invalid_ and the processor will refuse to read from this segment.
+5. P 플래그(47번 비트)는 세그먼트가 메모리에 있는지의 여부를 나타냅니다. P가 0이면 세그먼트가 _invalid_로 표시되고 프로세서가 이 세그먼트에서 읽기를 거부합니다. 
 
-6. AVL flag(bit 52) - Available and reserved bits. It is ignored in Linux.
+6. AVL 플래그(52번 비트) - 사용도 가능하고 이를 위해 자리도 예약된 비트이지만 Linux에서는 무시됩니다. 
 
-7. The L flag(bit 53) indicates whether a code segment contains native 64-bit code. If it is set, then the code segment executes in 64-bit mode.
+7.  L 플래그(53번 비트)는 코드 세그먼트에 네이티브 64비트 코드가 포함되어 있는지 여부를 나타냅니다. 플래그가 설정되어 있는 경우, 해당 코드 세그먼트는 64비트 모드로 실행됩니다. 
 
-8. The D/B flag(bit 54)  (Default/Big flag) represents the operand size i.e 16/32 bits. If set, operand size is 32 bits. Otherwise, it is 16 bits.
+8.  D/B 플래그(54번 비트)(기본/빅 플래그)는 피연산자 크기(예: 16/32비트)를 나타냅니다. 설정된 경우 피연산자 크기는 32비트입니다. 그렇지 않으면 16비트입니다. 
 
 Segment registers contain segment selectors as in real mode. However, in protected mode, a segment selector is handled differently. Each Segment Descriptor has an associated Segment Selector which is a 16-bit structure:
 
