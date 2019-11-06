@@ -1,26 +1,26 @@
-Kernel booting process. Part 4.
+커널 부팅 과정. 4 부.
 ================================================================================
 
-Transition to 64-bit mode
+64 bit 모드로 전환
 --------------------------------------------------------------------------------
 
-This is the fourth part of the `Kernel booting process` where we will see first steps in [protected mode](http://en.wikipedia.org/wiki/Protected_mode), like checking that CPU supports [long mode](http://en.wikipedia.org/wiki/Long_mode) and [SSE](http://en.wikipedia.org/wiki/Streaming_SIMD_Extensions), [paging](http://en.wikipedia.org/wiki/Paging), initializes the page tables and at the end we will discuss the transition to [long mode](https://en.wikipedia.org/wiki/Long_mode).
+ 커널 부팅 프로세스의 네 번째 부분으로 우리는 [보호 모드](http://en.wikipedia.org/wiki/Protected_mode) 첫 단계를 배울 것 입니다. CPU가 [롱 모드](http://en.wikipedia.org/wiki/Long_mode) 와 [SSE](http://en.wikipedia.org/wiki/Streaming_SIMD_Extensions)를 지원하는지 확인하고, [페이징](http://en.wikipedia.org/wiki/Paging), 페이지 테이블을 초기화하기 등 결국 우리는 [롱 모드](https://en.wikipedia.org/wiki/Long_mode)로의 전환에 대해 논의합니다.
 
 **NOTE: there will be much assembly code in this part, so if you are not familiar with that, you might want to consult a book about it**
 
-In the previous [part](https://github.com/0xAX/linux-insides/blob/v4.16/Booting/linux-bootstrap-3.md) we stopped at the jump to the `32-bit` entry point in [arch/x86/boot/pmjump.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/pmjump.S):
+이전 [부분](https://github.com/0xAX/linux-insides/blob/v4.16/Booting/linux-bootstrap-3.md)에서 우리는 [arch/x86/boot/pmjump.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/pmjump.S)의 `32-bit` 진입 점으로 점프하는 것을 멈췄습니다:
 
 ```assembly
 jmpl	*%eax
 ```
 
-You will recall that `eax` register contains the address of the 32-bit entry point. We can read about this in the [linux kernel x86 boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt):
+우리는 eax 레지스터에는 32 비트 진입 점의 주소가 포함되어 있다는 것을 알 수 있었습니다. [리눅스 커널 x86 부팅 프로토콜](https://www.kernel.org/doc/Documentation/x86/boot.txt)에서 이것에 대해 읽을 수 있습니다:
 
 ```
-When using bzImage, the protected-mode kernel was relocated to 0x100000
+bzImage를 사용할 때, 보호 모드 커널이 0x100000로 재배치 되었습니다.
 ```
 
-Let's make sure that it is true by looking at the register values at the 32-bit entry point:
+32 비트 진입 점에서 레지스터 값을 확인하여 사실인지 확인해 봅시다:
 
 ```
 eax            0x100000	1048576
@@ -41,14 +41,14 @@ fs             0x18	24
 gs             0x18	24
 ```
 
-We can see here that `cs` register contains - `0x10` (as you may remember from the [previous part](https://github.com/0xAX/linux-insides/blob/v4.16/Booting/linux-bootstrap-3.md), this is the second index in the `Global Descriptor Table`), `eip` register contains `0x100000` and the base address of all segments including the code segment are zero.
+ 여기서 cs 레즈스터에 - `0x10` ([이전 부분](https://github.com/0xAX/linux-insides/blob/v4.16/Booting/linux-bootstrap-3.md)에서 기억할 수 있듯이, `Global Descriptor Table`의 두 번째 인덱스 인 것을 알 수 있습니다.)이 포함되어 있음을 알 수 있고, `eip` 레지스터에 `0x100000`이 포함되어 있으며 코드 세그먼트를 포함한 모든 세그먼트의 기본 주소는 0입니다.
 
-So we can get the physical address, it will be `0:0x100000` or just `0x100000`, as specified by the boot protocol. Now let's start with the `32-bit` entry point.
+따라서 실제 주소를 얻을 수 있습니다. 부팅 프로토콜에서 지정한대로, `0:0x100000` 또는 `0x100000` 입니다. 이제 32-bit 진입점부터 시작하겠습니다.
 
-32-bit entry point
+32-bit 진입점
 --------------------------------------------------------------------------------
 
-We can find the definition of the `32-bit` entry point in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) assembly source code file:
+[arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) 어셈블리 소스 코드 파일에서 `32-bit` 진입 점의 정의를 찾을 수 있습니다:
 
 ```assembly
 	__HEAD
@@ -60,14 +60,14 @@ ENTRY(startup_32)
 ENDPROC(startup_32)
 ```
 
-First of all, why the directory is named `compressed`? Actually `bzimage` is a gzipped `vmlinux + header + kernel setup code`. We saw the kernel setup code in all of the previous parts. So, the main goal of the `head_64.S` is to prepare for entering long mode, enter into it and then decompress the kernel. We will see all of the steps up to kernel decompression in this part.
+우선, 디렉토리 이름이 `compressed`인 이유는 무엇일까요? 실제로 `bzimage`는 압축 된 `vmlinux + 헤더 + 커널 설정 코드`입니다. 이전 내용에서 커널 설정 코드를 보았습니다. 따라서 `head_64.S`의 주요 목표는 롱 모드로 들어가서 준비한 다음 커널을 압축 해제하는 것입니다. 이 부분에서 커널 압축 해제까지의 모든 단계를 볼 수 있습니다.
 
-You may find two files in the `arch/x86/boot/compressed` directory:
+`arch/x86/boot/compressed` 디렉터리에서 두개의 파일을 찾을 수 있습니다:
 
 * [head_32.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_32.S)
 * [head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S)
 
-but we will consider only `head_64.S` source code file because, as you may remember, this book is only `x86_64` related; Let's look at [arch/x86/boot/compressed/Makefile](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/Makefile). We can find the following `make` target here:
+이 책은 `x86_64`에만 관련되어 있기 때문에 `head_64.S` 소스 코드 파일 만 고려할 것입니다. [arch/x86/boot/compressed/Makefile](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/Makefile)을 봅시다. `make` 타깃을 찾을 수 있습니다:
 
 ```Makefile
 vmlinux-objs-y := $(obj)/vmlinux.lds $(obj)/head_$(BITS).o $(obj)/misc.o \
@@ -75,9 +75,9 @@ vmlinux-objs-y := $(obj)/vmlinux.lds $(obj)/head_$(BITS).o $(obj)/misc.o \
 	$(obj)/piggy.o $(obj)/cpuflags.o
 ```
 
-Take a look on the `$(obj)/head_$(BITS).o`.
+`$(obj)/head_$(BITS).o`를 살펴봅시다.
 
-This means that we will select which file to link based on what `$(BITS)` is set to, either `head_32.o` or `head_64.o`. The `$(BITS)` variable is defined elsewhere in [arch/x86/Makefile](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/Makefile) based on the kernel configuration:
+이것은 `$(BITS)`가 `head_32.o` 또는 `head_64.o`로 설정된 것을 기반으로 연결할 파일을 선택한다는 의미입니다. `$(BITS)` 변수는 커널 구성에 따라 [arch/x86/Makefile](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/Makefile)의 다른 곳에 정의됩니다:
 
 ```Makefile
 ifeq ($(CONFIG_X86_32),y)
@@ -91,12 +91,13 @@ else
 endif
 ```
 
-Now we know where to start, so let's do it.
+이제 시작 위치를 알았으니 해보겠습니다.
 
-Reload the segments if needed
+필요시 세그먼트를 다시 로드
 --------------------------------------------------------------------------------
 
-As indicated above, we start in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/head_64.S) assembly source code file. First we see the definition of the special section attribute before the `startup_32` definition:
+위에서 설명한 것처럼, [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/head_64.S)
+어셈블리 소스 코드 파일에서 시작합니다. 먼저 startup_32 정의 전에 특수 섹션 속성의 정의를 봅니다:
 
 ```assembly
     __HEAD
@@ -104,13 +105,13 @@ As indicated above, we start in the [arch/x86/boot/compressed/head_64.S](https:/
 ENTRY(startup_32)
 ```
 
-The `__HEAD` is macro which is defined in [include/linux/init.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/init.h) header file and expands to the definition of the following section:
+`__HEAD`는 [include / linux / init.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/init.h) 헤더 파일에 정의 된 매크로이며 다음 섹션의 정의를 확장한다:
 
 ```C
 #define __HEAD		.section	".head.text","ax"
 ```
 
-with `.head.text` name and `ax` flags. In our case, these flags show us that this section is [executable](https://en.wikipedia.org/wiki/Executable) or in other words contains code. We can find definition of this section in the [arch/x86/boot/compressed/vmlinux.lds.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/vmlinux.lds.S) linker script:
+`.head.text` 이름과 `ax` 플래그와 함께. 이 경우이 플래그는이 섹션이 [실행 가능](https://en.wikipedia.org/wiki/Executable)이거나 다른 말로 코드를 포함하고 있음을 나타냅니다. 이 섹션의 정의는 [arch / x86 / boot / compressed / vmlinux.lds.S](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/compressed/vmlinux에서 찾을 수 있습니다. .lds.S) 링커 스크립트:
 
 ```
 SECTIONS
@@ -127,17 +128,17 @@ SECTIONS
 }
 ```
 
-If you are not familiar with the syntax of `GNU LD` linker scripting language, you can find more information in the [documentation](https://sourceware.org/binutils/docs/ld/Scripts.html#Scripts). In short, the `.` symbol is a special variable of linker - location counter. The value assigned to it is an offset relative to the segment. In our case, we assign zero to location counter. This means that our code is linked to run from the `0` offset in memory. Moreover, we can find this information in comments:
+`GNU LD` 링커 스크립팅 언어의 구문에 익숙하지 않은 경우 [documentation](https://sourceware.org/binutils/docs/ld/Scripts.html#Scripts)에서 자세한 정보를 찾을 수 있습니다. 위치 카운터 - 즉,`.` 기호는 링커의 특별한 변수입니다. 여기에 할당 된 값은 세그먼트와 관련된 오프셋입니다. 이 경우 위치 카운터에 0을 할당합니다. 이것은 우리 코드가 메모리의`0` 오프셋에서 실행되도록 연결되어 있음을 의미합니다. 또한 이 정보를 주석에서 찾을 수 있습니다:
 
 ```
-Be careful parts of head_64.S assume startup_32 is at address 0.
+head_64.S의 부분은 startup_32가 주소 0에 있다고 가정하십시오.
 ```
 
-Ok, now we know where we are, and now is the best time to look inside the `startup_32` function.
+자, 이제 우리는 현재 위치를 알고 있으며, 이제`startup_32` 함수를 살펴보기에 가장 좋은 시간입니다.
 
-In the beginning of the `startup_32` function, we can see the `cld` instruction which clears the `DF` bit in the [flags](https://en.wikipedia.org/wiki/FLAGS_register) register. When direction flag is clear, all string operations like [stos](http://x86.renejeschke.de/html/file_module_x86_id_306.html), [scas](http://x86.renejeschke.de/html/file_module_x86_id_287.html) and others will increment the index registers `esi` or `edi`. We need to clear direction flag because later we will use strings operations for clearing space for page tables, etc.
+`startup_32` 함수의 시작 부분에서 우리는 [flags](https://en.wikipedia.org/wiki/FLAGS_register) 레지스터에서 DF 비트를 지우는 cld 명령을 볼 수 있습니다. 방향 플래그가 지워지면 [stos](http://x86.renejeschke.de/html/file_module_x86_id_306.html), [scas](http://x86.renejeschke.de/html/file_module_x86_id_287.html과 같은 모든 문자열 작업 ) 및 기타는 인덱스 레지스터 `esi` 또는`edi`를 증가시킵니다. 나중에 페이지 테이블 등의 공간을 비우기 위해 문자열 연산을 사용하므로 방향 플래그를 지워야합니다.
 
-After we have cleared the `DF` bit, next step is the check of the `KEEP_SEGMENTS` flag from `loadflags` kernel setup header field. If you remember we already saw `loadflags` in the very first [part](https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html) of this book. There we checked `CAN_USE_HEAP` flag to get ability to use heap. Now we need to check the `KEEP_SEGMENTS` flag. This flag is described in the linux [boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt) documentation:
+DF 비트를 클리어 한 후 다음 단계는 loadflags 커널 설정 헤더 필드에서`KEEP_SEGMENTS` 플래그를 점검하는 것입니다. 우리가 이미 기억한다면이 책의 맨 처음 부분(https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-1.html)에서 'loadflags'를 보았습니다. 거기에서 힙을 사용하는 능력을 얻기 위해`CAN_USE_HEAP` 플래그를 확인했습니다. 이제 'KEEP_SEGMENTS'플래그를 확인해야합니다. 이 플래그는 리눅스 [부팅 프로토콜](https://www.kernel.org/doc/Documentation/x86/boot.txt) 문서에 설명되어 있습니다:
 
 ```
 Bit 6 (write): KEEP_SEGMENTS
@@ -148,7 +149,7 @@ Bit 6 (write): KEEP_SEGMENTS
 		a base of 0 (or the equivalent for their environment).
 ```
 
-So, if the `KEEP_SEGMENTS` bit is not set in the `loadflags`, we need to set `ds`, `ss` and `es` segment registers to the index of data segment with base `0`. That we do:
+따라서 만약 `KEEP_SEGMENTS` 비트가 `loadflags`에 설정되어 있지 않다면, `ds`,`ss` 및 `es` 세그먼트 레지스터를 기준이 `0` 인 데이터 세그먼트의 인덱스로 설정해야합니다. 우리가하는 일:
 
 ```C
 	testb $KEEP_SEGMENTS, BP_loadflags(%esi)
@@ -161,29 +162,29 @@ So, if the `KEEP_SEGMENTS` bit is not set in the `loadflags`, we need to set `ds
 	movl	%eax, %ss
 ```
 
-Remember that the `__BOOT_DS` is `0x18` (index of data segment in the [Global Descriptor Table](https://en.wikipedia.org/wiki/Global_Descriptor_Table)). If `KEEP_SEGMENTS` is set, we jump to the nearest `1f` label or update segment registers with `__BOOT_DS` if it is not set. It is pretty easy, but here is one interesting moment. If you've read the previous [part](https://github.com/0xAX/linux-insides/blob/v4.16/Booting/linux-bootstrap-3.md), you may remember that we already updated these segment registers right after we switched to [protected mode](https://en.wikipedia.org/wiki/Protected_mode) in [arch/x86/boot/pmjump.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/pmjump.S). So why do we need to care about values of segment registers again? The answer is easy. The Linux kernel also has a 32-bit boot protocol and if a bootloader uses it to load the Linux kernel all code before the `startup_32` will be missed. In this case, the `startup_32` will be the first entry point of the Linux kernel right after the bootloader and there are no guarantees that segment registers will be in known state.
+`__BOOT_DS`는 `0x18` ([Global Descriptor Table](https://en.wikipedia.org/wiki/Global_Descriptor_Table)의 데이터 세그먼트 색인)입니다. 만약 'KEEP_SEGMENTS'가 설정되면 가장 가까운 '1f'레이블로 이동하거나 설정되지 않은 경우 '__BOOT_DS'로 세그먼트 레지스터를 업데이트합니다. 꽤 쉽지만 여기서 흥미로운 순간이 있습니다. 이전의 [part](https://github.com/0xAX/linux-insides/blob/v4.16/Booting/linux-bootstrap-3.md)를 읽었다면 이미 업데이트 된 것을 기억할 것입니다 [arch / x86 / boot / pmjump.S](https://github.com/torvalds/linux)에서 [보호 모드](https://en.wikipedia.org/wiki/Protected_mode)로 전환 한 직후 세그먼트 레지스터 /blob/v4.16/arch/x86/boot/pmjump.S). 그렇다면 왜 세그먼트 레지스터의 값을 다시 신경 써야합니까? 대답은 쉽습니다. 리눅스 커널은 32 비트 부트 프로토콜을 가지고 있으며 부트 로더가이를 사용하여 리눅스 커널을로드한다면`startup_32`가 나오기 전에 모든 코드를 놓치게됩니다. 이 경우,`startup_32`는 부트 로더 바로 다음에 Linux 커널의 첫 번째 진입 점이 될 것이며 세그먼트 레지스터가 알려진 상태에 있다는 보장은 없습니다.
 
-After we have checked the `KEEP_SEGMENTS` flag and put the correct value to the segment registers, the next step is to calculate the difference between where we loaded and compiled to run. Remember that `setup.ld.S` contains following definition: `. = 0` at the start of the `.head.text` section. This means that the code in this section is compiled to run from `0` address. We can see this in `objdump` output:
+`KEEP_SEGMENTS` 플래그를 확인하고 세그먼트 레지스터에 올바른 값을 넣은 후 다음 단계는 로드하고 컴파일하여 실행하는 위치의 차이를 계산하는 것입니다. `setup.ld.S`에는 다음 정의가 포함되어 있습니다. `.head.text` 섹션 시작시 0 =. 이것은이 섹션의 코드가 `0` 주소에서 실행되도록 컴파일되었음을 의미합니다. 우리는 `objdump` 출력에서 ​​이것을 볼 수 있습니다:
 
 ```
-arch/x86/boot/compressed/vmlinux:     file format elf64-x86-64
+arch/x86/boot/compressed/vmlinux:     파일 포맷 elf64-x86-64
 
 
-Disassembly of section .head.text:
+.head.text 섹션의 분해 :
 
 0000000000000000 <startup_32>:
    0:   fc                      cld
    1:   f6 86 11 02 00 00 40    testb  $0x40,0x211(%rsi)
 ```
 
-The `objdump` util tells us that the address of the `startup_32` is `0` but actually it's not so. Our current goal is to know where actually we are. It is pretty simple to do in [long mode](https://en.wikipedia.org/wiki/Long_mode) because it support `rip` relative addressing, but currently we are in [protected mode](https://en.wikipedia.org/wiki/Protected_mode). We will use common pattern to know the address of the `startup_32`. We need to define a label and make a call to this label and pop the top of the stack to a register:
+`objdump` 유틸리티는`startup_32`의 주소가`0 '이라고 알려주지 만 실제로는 그렇지 않습니다. 우리의 현재 목표는 실제로 우리가 어디에 있는지 아는 것입니다. `rip` 상대 주소 지정을 지원하기 때문에 [long mode](https://en.wikipedia.org/wiki/Long_mode)에서하는 것이 매우 간단하지만 현재는 [protected mode](https : // en .wikipedia.org / wiki / Protected_mode). `startup_32`의 주소를 알기 위해 공통 패턴을 사용할 것입니다. 레이블을 정의하고이 레이블을 호출하고 스택의 상단을 레지스터로 팝해야합니다.
 
 ```assembly
 call label
 label: pop %reg
 ```
 
-After this, a `%reg` register will contain the address of a label. Let's look at the similar code which searches address of the `startup_32` in the Linux kernel:
+그 후,`% reg` 레지스터는 레이블의 주소를 포함 할 것입니다. 리눅스 커널에서`startup_32`의 주소를 검색하는 비슷한 코드를 보자 :
 
 ```assembly
         leal	(BP_scratch+4)(%esi), %esp
@@ -192,7 +193,7 @@ After this, a `%reg` register will contain the address of a label. Let's look at
         subl	$1b, %ebp
 ```
 
-As you remember from the previous part, the `esi` register contains the address of the [boot_params](https://github.com/torvalds/linux/blob/v4.16/arch/x86/include/uapi/asm/bootparam.h#L113) structure which was filled before we moved to the protected mode. The `boot_params` structure contains a special field `scratch` with offset `0x1e4`. These four bytes field will be temporary stack for `call` instruction. We are getting the address of the `scratch` field + `4` bytes and putting it in the `esp` register. We add `4` bytes to the base of the `BP_scratch` field because, as just described, it will be a temporary stack and the stack grows from top to down in `x86_64` architecture. So our stack pointer will point to the top of the stack. Next, we can see the pattern that I've described above. We make a call to the `1f` label and put the address of this label to the `ebp` register because we have return address on the top of stack after the `call` instruction will be executed. So, for now we have an address of the `1f` label and now it is easy to get address of the `startup_32`. We just need to subtract address of label from the address which we got from the stack:
+이전 부분에서 기억 하듯이`esi` 레지스터에는 [boot_params](https://github.com/torvalds/linux/blob/v4.16/arch/x86/include/uapi/asm/ 우리가 보호 모드로 이동하기 전에 채워진 bootparam.h # L113) 구조. `boot_params` 구조는 오프셋이 0x1e4 인 특수 필드 'scratch'를 포함합니다. 이 4 바이트 필드는`call` 명령을위한 임시 스택입니다. `scratch` 필드 +`4` 바이트의 주소를 가져 와서`esp` 레지스터에 넣습니다. 방금 설명한 것처럼 임시 스택이되고 스택은`x86_64` 아키텍처에서 위에서 아래로 커지기 때문에 'BP_scratch'필드의베이스에`4` 바이트를 추가합니다. 따라서 스택 포인터는 스택의 상단을 가리 킵니다. 다음으로 위에서 설명한 패턴을 볼 수 있습니다. `call` 명령어가 실행 된 후 스택 맨 위에 리턴 주소가 있으므로`1f` 레이블을 호출하고이 레이블의 주소를`ebp` 레지스터에 넣습니다. 이제 우리는`1f` 레이블의 주소를 가지게되었고 이제는`startup_32`의 주소를 얻는 것이 쉽습니다. 스택에서 얻은 주소에서 레이블 주소를 빼면됩니다:
 
 ```
 startup_32 (0x0)     +-----------------------+
