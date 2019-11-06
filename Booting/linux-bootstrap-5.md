@@ -6,7 +6,7 @@ Kernel decompression
 
 이것은 `커널 부팅 프로세스` 시리즈의 다섯 번 째 파트입니다. 우리는 이전 [파트](https://github.com/0xAX/linux-insides/blob/v4.16/Bootinglinux-bootstrap-4.md#transition-to-the-long-mode)에서 64비트 모드로 전환하는 것을 보았고 이 시점에서 계속 진행 할 것입니다. 우리는 커널 압축 해제, 재배치 및 직접 커널 압축 해제에 대한 준비로 커널 코드로 도약하기 전에 마지막 단계를 보게 될 것입니다. 다시 커널 코드를 살펴봅시다.
 
-커널 압축 디컴프레션 전 준비해야할 사항
+커널 디컴프레션 전 준비해야할 사항
 --------------------------------------------------------------------------------
 
 우리는 `64-bit` 엔트리 포인트에서 점프하기 직전에 멈췄습니다. `startup_64` [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) 소스 코드 파일에 위치한. 우리는 이미 `startup_32`에서 `startup_64`로 점프하는 것을 보았습니다.
@@ -89,9 +89,9 @@ boot_stack:
 boot_stack_end:
 ```
 
-It located in the end of the `.bss` section, right before the `.pgtable`. If you will look into [arch/x86/boot/compressed/vmlinux.lds.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/vmlinux.lds.S) linker script, you will find  Definition of the `.bss` and `.pgtable` there.
+그것은 `.pgtable` 바로 앞에 있는 `.bss` 섹션 끝에 있습니다.[arch/x86/boot/compressed/vmlinux.lds.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/vmlinux.lds.S)를 살펴 보면, 링커 스크립트에는 `.bss` 및 `.pgtable`의 정의가 있습니다.
 
-As we set the stack, now we can copy the compressed kernel to the address that we got above, when we calculated the relocation address of the decompressed kernel. Before details, let's look at this assembly code:
+스택을 설정하면 디컴프레션된 커널의 재배치 주소를 계산할 때 디컴프레션된 커널을 위에서 얻은 주소로 복사할 수 있습니다. 세부 사항을 작성하기 전에, 아래의 어셈블리 코드를 살펴 보겠습니다.
 
 ```assembly
 	pushq	%rsi
@@ -105,9 +105,9 @@ As we set the stack, now we can copy the compressed kernel to the address that w
 	popq	%rsi
 ```
 
-First of all we push `rsi` to the stack. We need preserve the value of `rsi`, because this register now stores a pointer to the `boot_params` which is real mode structure that contains booting related data (you must remember this structure, we filled it in the start of kernel setup). In the end of this code we'll restore the pointer to the `boot_params` into `rsi` again. 
+우선 우리는 스택에 `rsi`를 넣습니다. 이 레지스터는 이제 부팅 관련 데이터를 포함하는 리얼 모드 구조 인`boot_params`에 대한 포인터를 저장하기 때문에 rsi 값을 보존해야합니다 (이 구조를 기억해야합니다. 커널 설정의 시작 부분에 채웠습니다). 이 코드의 끝에서 우리는 `boot_params` 에 대한 포인터를 `rsi` 에 다시 복원 할 것입니다.
 
-The next two `leaq` instructions calculates effective addresses of the `rip` and `rbx` with `_bss - 8` offset and put it to the `rsi` and `rdi`. Why do we calculate these addresses? Actually the compressed kernel image is located between this copying code (from `startup_32` to the current code) and the decompression code. You can verify this by looking at the linker script - [arch/x86/boot/compressed/vmlinux.lds.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/vmlinux.lds.S):
+다음 두 `leaq` 명령어는 `_bss-8` 오프셋으로 `rip` 및 `rbx`의 유효 주소를 계산하여 `rsi`와 `rdi`에 넣습니다. 왜 이 주소를 계산할까요? 실제로 디컴프레스된 커널 이미지는이 복사 코드 ( 'startup_32'에서 현재 코드로)와 디컴프레션 코드 사이에 있습니다. 링커 스크립트- [arch / x86 / boot / compressed / vmlinux.lds.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/vmlinux.lds.S)를 봐서 이를 확인할 수 있습니다.
 
 ```
 	. = 0;
@@ -127,7 +127,7 @@ The next two `leaq` instructions calculates effective addresses of the `rip` and
 	}
 ```
 
-Note that `.head.text` section contains `startup_32`. You may remember it from the previous part:
+`.head.text` 섹션에는`startup_32`가 포함되어 있습니다. 이전 부분에서 기억할 수 있습니다.
 
 ```assembly
 	__HEAD
@@ -138,7 +138,7 @@ ENTRY(startup_32)
 ...
 ```
 
-The `.text` section contains decompression code:
+`.text` 섹션은 디컴프레션 코드를 포함합니다 :
 
 ```assembly
 	.text
@@ -152,21 +152,22 @@ relocated:
 ...
 ```
 
-And `.rodata..compressed` contains the compressed kernel image. So `rsi` will contain the absolute address of `_bss - 8`, and `rdi` will contain the relocation relative address of `_bss - 8`. As we store these addresses in registers, we put the address of `_bss` in the `rcx` register. As you can see in the `vmlinux.lds.S` linker script, it's located at the end of all sections with the setup/kernel code. Now we can start to copy data from `rsi` to `rdi`, `8` bytes at the time, with the `movsq` instruction. 
+그리고 `.rodata..compressed`는 디컴프레스 된 커널 이미지를 포함합니다. 따라서 `rsi`는 `_bss-8`의 절대 주소를 포함하고 `rdi`는 `_bss-8`의 재배치 상대 주소를 포함합니다. 이 주소들을 레지스터에 저장함에 따라 `_bss`의 주소를`rcx` 레지스터에 넣습니다. `vmlinux.lds.S` 링커 스크립트에서 볼 수 있듯이, 설정 / 커널 코드가있는 모든 섹션의 끝에 있습니다. 이제 movsq 명령으로`rsi`에서 `rdi`,`8` 바이트의 데이터를 복사 할 수 있습니다.
 
-Note that there is an `std` instruction before data copying: it sets the `DF` flag, which means that `rsi` and `rdi` will be decremented. In other words, we will copy the bytes backwards. At the end, we clear the `DF` flag with the `cld` instruction, and restore `boot_params` structure to `rsi`.
 
-Now we have the address of the `.text` section address after relocation, and we can jump to it:
+데이터 복사 전에 `std` 명령이 있습니다 : 그것은 `DF` 플래그를 설정합니다. 이는 `rsi`와 `rdi`가 감소 함을 의미합니다. 즉, 바이트를 뒤로 복사합니다. 마지막으로, 우리는 `cld` 명령어로 `DF` 플래그를 지우고 `boot_params` 구조를 `rsi`로 복원합니다.
+
+이제 우리는 재배치 후 `.text` 섹션의 주소를 가지게되었고, 우리는 그 주소로 이동할 수 있습니다 :
 
 ```assembly
 	leaq	relocated(%rbx), %rax
 	jmp	*%rax
 ```
 
-Last preparation before kernel decompression
+커널 디컴프레션 전 마지막 준비
 --------------------------------------------------------------------------------
 
-In the previous paragraph we saw that the `.text` section starts with the `relocated` label. The first thing it does is clearing the `bss` section with:
+이전 단락에서 우리는 `.text` 섹션이 재배치 된 레이블로 시작하는 것을 보았습니다. 가장 먼저하는 일은 `bss` 섹션을 지우는 것입니다 :
 
 ```assembly
 	xorl	%eax, %eax
@@ -177,9 +178,8 @@ In the previous paragraph we saw that the `.text` section starts with the `reloc
 	rep	stosq
 ```
 
-We need to initialize the `.bss` section, because we'll soon jump to [C](https://en.wikipedia.org/wiki/C_%28programming_language%29) code. Here we just clear `eax`, put the address of `_bss` in `rdi` and `_ebss` in `rcx`, and fill it with zeros with the `rep stosq` instruction.
-
-At the end, we can see the call to the `extract_kernel` function:
+곧 [C](https://en.wikipedia.org/wiki/C_%28programming_language%29) 코드로 넘어 가기 때문에 `.bss` 섹션을 초기화해야합니다. 여기서는 `eax`를 지우고 `rdi`에 `_bss`와 `rcx`에 `_ebss`의 주소를 넣고 `rep stosq` 명령으로 0을 채웁니다.
+마지막으로 `extract_kernel` 함수에 대한 호출을 볼 수 있습니다.
 
 ```assembly
 	pushq	%rsi
@@ -193,7 +193,7 @@ At the end, we can see the call to the `extract_kernel` function:
 	popq	%rsi
 ```
 
-Again we set `rdi` to a pointer to the `boot_params` structure and preserve it on the stack. In the same time we set `rsi` to point to the area which should be used for kernel uncompression. The last step is preparation of the `extract_kernel` parameters and call of this function which will uncompres the kernel. The `extract_kernel` function is defined in the  [arch/x86/boot/compressed/misc.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/misc.c) source code file and takes six arguments:
+다시 우리는 `rdi`를 `boot_params` 구조의 포인터로 설정하고 스택에 보존합니다. 동시에 커널 디컴프레션에 사용될 영역을 가리키도록 `rsi`를 설정했습니다. 마지막 단계는 `extract_kernel` 매개 변수를 준비하고 커널을 분해하는 이 함수를 호출하는 것입니다. `extract_kernel` 함수는 [arch / x86 / boot / compressed / misc.](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/misc)에 정의되어 있습니다. .c) 소스 코드 파일이며 6 개의 인수를 사용합니다.
 
 * `rmode` - pointer to the [boot_params](https://github.com/torvalds/linux/blob/v4.16/arch/x86/include/uapi/asm/bootparam.h) structure which is filled by bootloader or during early kernel initialization;
 * `heap` - pointer to the `boot_heap` which represents start address of the early boot heap;
