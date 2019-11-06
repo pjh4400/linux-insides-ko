@@ -170,18 +170,18 @@ struct x86_mapping_info {
 };
 ```
 
-This structure provides information about memory mappings. As you may remember from the previous part, we already setup'ed initial page tables from 0 up to `4G`. For now we may need to access memory above `4G` to load kernel at random position. So, the `initialize_identity_maps` function executes initialization of a memory region for a possible needed new page table. First of all let's try to look at the definition of the `x86_mapping_info` structure.
+이 구조는 메모리 매핑에 대한 정보를 제공합니다. 이전 부분에서 기억 하듯이 초기 페이지 테이블은 0에서`4G까지 설정했습니다. 현재 커널을 임의의 위치에 로드하기 위해 `4G` 이상의 메모리에 액세스해야 할 수도 있습니다. 따라서 'initialize_identity_maps'함수는 필요한 새 페이지 테이블에 대해 메모리 영역의 초기화를 실행합니다. 우선 `x86_mapping_info` 구조의 정의를 살펴 봅시다.
 
-The `alloc_pgt_page` is a callback function that will be called to allocate space for a page table entry. The `context` field is an instance of the `alloc_pgt_data` structure in our case which will be used to track allocated page tables. The `page_flag` and `kernpg_flag` fields are page flags. The first represents flags for `PMD` or `PUD` entries. The second `kernpg_flag` field represents flags for kernel pages which can be overridden later. The `direct_gbpages` field represents support for huge pages and the last `offset` field represents offset between kernel virtual addresses and physical addresses up to `PMD` level.
+`alloc_pgt_page`는 페이지 테이블 엔트리를 위한 공간을 할당하기 위해 호출되는 콜백 함수입니다. `context` 필드는 할당 된 페이지 테이블을 추적하는 데 사용될 우리의 경우 `alloc_pgt_data` 구조의 인스턴스입니다. `page_flag` 및 `kernpg_flag` 필드는 페이지 플래그입니다. 첫 번째는 'PMD'또는 'PUD'항목에 대한 플래그를 나타냅니다. 두 번째 'kernpg_flag' 필드는 나중에 무시할 수있는 커널 페이지에 대한 플래그를 나타냅니다. `direct_gbpages` 필드는 거대한 페이지에 대한 지원을 나타내고 마지막 'offset'필드는 커널 가상 주소와 실제 주소 사이의 최대 PMD 수준 오프셋을 나타냅니다.
 
-The `alloc_pgt_page` callback just validates that there is space for a new page, allocates new page:
+`alloc_pgt_page` 콜백은 새로운 페이지를위한 공간이 있는지 확인하고 새로운 페이지를 할당합니다 :
 
 ```C
 entry = pages->pgt_buf + pages->pgt_buf_offset;
 pages->pgt_buf_offset += PAGE_SIZE;
 ```
 
-in the buffer from the:
+버퍼에서 :
 
 ```C
 struct alloc_pgt_data {
@@ -191,36 +191,36 @@ struct alloc_pgt_data {
 };
 ```
 
-structure and returns address of a new page. The last goal of the `initialize_identity_maps` function is to initialize `pgdt_buf_size` and `pgt_buf_offset`. As we are only in initialization phase, the `initialze_identity_maps` function sets `pgt_buf_offset` to zero:
+새 페이지의 주소와 구조를 반환합니다. `initialize_identity_maps` 함수의 마지막 목표는 `pgdt_buf_size` 및 `pgt_buf_offset`을 초기화하는 것입니다. 초기화 단계에만 있기 때문에 `initialze_identity_maps` 함수는 `pgt_buf_offset`을 0으로 설정합니다 :
 
 ```C
 pgt_data.pgt_buf_offset = 0;
 ```
 
-and the `pgt_data.pgt_buf_size` will be set to `77824` or `69632` depends on which boot protocol will be used by bootloader (64-bit or 32-bit). The same is for `pgt_data.pgt_buf`. If a bootloader loaded the kernel at `startup_32`, the `pgdt_data.pgdt_buf` will point to the end of the page table which already was initialzed in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S):
+`pgt_data.pgt_buf_size`는 `77824` 또는 `69632`로 설정되며 부트 로더 (64 비트 또는 32 비트)가 사용할 부트 프로토콜에 따라 다릅니다. `pgt_data.pgt_buf`도 마찬가지입니다. 부트 로더가 `startup_32`에서 커널을 로드했다면 `pgdt_data.pgdt_buf`는 [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) 에서 이미 초기화 된 페이지 테이블의 끝을 가리 킵니다.:
 
 ```C
 pgt_data.pgt_buf = _pgtable + BOOT_INIT_PGT_SIZE;
 ```
 
-where `_pgtable` points to the beginning of this page table [_pgtable](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/vmlinux.lds.S). In other way, if a bootloader have used 64-bit boot protocol and loaded the kernel at `startup_64`, early page tables should be built by bootloader itself and `_pgtable` will be just overwrote:
+여기서 _pgtable은 이 페이지 테이블의 시작을 가리킵니다 [_pgtable] (https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/vmlinux.lds.S). 다른 방법으로, 부트 로더가 64-비트 부트 프로토콜을 사용하고 `startup_64`에서 커널을 로드했다면, 초기 페이지 테이블은 부트 로더 자체에 의해 작성되어야하며 `_pgtable`은 그냥 덮어 쓰기됩니다 :
 
 ```C
 pgt_data.pgt_buf = _pgtable
 ```
 
-As the buffer for new page tables is initialized, we may return back to the `choose_random_location` function.
+새로운 페이지 테이블을위한 버퍼가 초기화되면, 우리는`choose_random_location` 함수로 되돌아 갈 수 있습니다.
 
-Avoid reserved memory ranges
+예약 된 메모리 범위는 피하세요.
 --------------------------------------------------------------------------------
 
-After the stuff related to identity page tables is initilized, we may start to choose random location where to put decompressed kernel image. But as you may guess, we can't choose any address. There are some reseved addresses in memory ranges. Such addresses occupied by important things, like [initrd](https://en.wikipedia.org/wiki/Initial_ramdisk), kernel command line and etc. The
+속성 페이지 테이블과 관련된 내용이 초기화 된 후 압축 해제 된 커널 이미지를 넣을 위치를 임의로 선택할 수 있습니다. 그러나 짐작할 수 있듯이 주소를 선택할 수 없습니다. 메모리 범위에 일부 sebed 주소가 있습니다. 이러한 주소는 [initrd] (https://en.wikipedia.org/wiki/Initial_ramdisk), 커널 명령 행 등과 같은 중요한 것들이 차지합니다.
 
 ```C
 mem_avoid_init(input, input_size, *output);
 ```
 
-function will help us to do this. All non-safe memory regions will be collected in the:
+기능을 통해이 작업을 수행 할 수 있습니다. 안전하지 않은 모든 메모리 영역이 다음 배열에 수집됩니다.:
 
 ```C
 struct mem_vector {
@@ -231,7 +231,7 @@ struct mem_vector {
 static struct mem_vector mem_avoid[MEM_AVOID_MAX];
 ```
 
-array. Where `MEM_AVOID_MAX` is from `mem_avoid_index` [enum](https://en.wikipedia.org/wiki/Enumerated_type#C) which represents different types of reserved memory regions:
+`MEM_AVOID_MAX`는 다른 유형의 예약된 메모리 영역을 나타내는 `mem_avoid_index` [enum] (https://en.wikipedia.org/wiki/Enumerated_type#C)에서 온 것입니다 :
 
 ```C
 enum mem_avoid_index {
@@ -245,9 +245,9 @@ enum mem_avoid_index {
 };
 ```
 
-Both are defined in the [arch/x86/boot/compressed/kaslr.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/kaslr.c) source code file.
+둘 다 소스 코드 파일 [arch/x86/boot/compressed/kaslr.c] (https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/kaslr.c) 에 정의되어 있습니다.
 
-Let's look at the implementation of the `mem_avoid_init` function. The main goal of this function is to store information about reseved memory regions described by the `mem_avoid_index` enum in the `mem_avoid` array and create new pages for such regions in our new identity mapped buffer. Numerous parts fo the `mem_avoid_index` function are similar, but let's take a look at the one of them:
+`mem_avoid_init` 함수의 구현을 살펴 봅시다. 이 함수의 주요 목표는 `mem_avoid` 배열의 `mem_avoid_index` 열거형을 이용하여 예약 된 메모리 영역에 대한 정보를 저장하고 새로운 ID 매핑 버퍼에서 이러한 영역에 대한 새 페이지를 만드는 것입니다. `mem_avoid_index` 함수의 수많은 부분은 비슷하지만 그중 하나를 살펴 봅시다.:
 
 ```C
 mem_avoid[MEM_AVOID_ZO_RANGE].start = input;
