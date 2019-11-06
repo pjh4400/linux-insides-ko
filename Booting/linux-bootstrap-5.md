@@ -1,15 +1,15 @@
-Kernel booting process. Part 5.
+커널 부팅 프로세스. Part 5.
 ================================================================================
 
 Kernel decompression
 --------------------------------------------------------------------------------
 
-This is the fifth part of the `Kernel booting process` series. We saw transition to the 64-bit mode in the previous [part](https://github.com/0xAX/linux-insides/blob/v4.16/Booting/linux-bootstrap-4.md#transition-to-the-long-mode) and we will continue from this point in this part. We will see the last steps before we jump to the kernel code as preparation for kernel decompression, relocation and directly kernel decompression. So... let's start to dive in the kernel code again.
+이것은 `커널 부팅 프로세스` 시리즈의 다섯 번 째 파트입니다. 우리는 이전 [파트](https://github.com/0xAX/linux-insides/blob/v4.16/Bootinglinux-bootstrap-4.md#transition-to-the-long-mode)에서 64비트 모드로 전환하는 것을 보았고 이 시점에서 계속 진행 할 것입니다. 우리는 커널 압축 해제, 재배치 및 직접 커널 압축 해제에 대한 준비로 커널 코드로 도약하기 전에 마지막 단계를 보게 될 것입니다. 다시 커널 코드를 살펴봅시다.
 
-Preparation before kernel decompression
+커널 압축 디컴프레션 전 준비해야할 사항
 --------------------------------------------------------------------------------
 
-We stopped right before the jump on the `64-bit` entry point - `startup_64` which is located in the [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) source code file. We already saw the jump to the `startup_64` in the `startup_32`:
+우리는 `64-bit` 엔트리 포인트에서 점프하기 직전에 멈췄습니다. `startup_64` [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) 소스 코드 파일에 위치한. 우리는 이미 `startup_32`에서 `startup_64`로 점프하는 것을 보았습니다.
 
 ```assembly
 	pushl	$__KERNEL_CS
@@ -24,7 +24,7 @@ We stopped right before the jump on the `64-bit` entry point - `startup_64` whic
 	lret
 ```
 
-in the previous part. Since we loaded the new `Global Descriptor Table` and there was CPU transition in other mode (`64-bit` mode in our case), we can see the setup of the data segments:
+이전 부분에서, 새로운 `Global Descriptor Table`을 로드하고 다른 모드 (이 경우에는 64비트 모드)에서 CPU  전환이 있었으므로 데이터 세그먼트의 설정을 볼 수 있습니다.
 
 ```assembly
 	.code64
@@ -38,9 +38,9 @@ ENTRY(startup_64)
 	movl	%eax, %gs
 ```
 
-in the beginning of the `startup_64`. All segment registers besides `cs` register now reseted as we joined into the `long mode`.
+`startup_64`를 시작하는 부분에서, `cs` 레지스터 이외의 모든 세그먼트 레지스터는 `long mode`에 참가할 때 재설정됩니다.
 
-The next step is computation of difference between where the kernel was compiled and where it was loaded:
+다음 단계는 커널이 컴파일 된 위치와 로드 된 위치의 차이를 계산하는 것입니다.
 
 ```assembly
 #ifdef CONFIG_RELOCATABLE
@@ -60,9 +60,9 @@ The next step is computation of difference between where the kernel was compiled
 	addq	%rbp, %rbx
 ```
 
-The `rbp` contains the decompressed kernel start address and after this code executes `rbx` register will contain address to relocate the kernel code for decompression. We already saw code like this in the `startup_32` ( you can read about it in the previous part - [Calculate relocation address](https://github.com/0xAX/linux-insides/blob/v4.16/Booting/linux-bootstrap-4.md#calculate-relocation-address)), but we need to do this calculation again because the bootloader can use 64-bit boot protocol and `startup_32` just will not be executed in this case.
+`rbp` 는 디컴프레스 된 커널 시작 주소를 포함하고 이 코드가 실행된 후에 `rbx` 레지스터는 디컴프레스를 위해 커널 코드를 재배치하기 위한 주소를 포함합니다. 우리는 이미 `startup_32`에서 이와 같은 코드를 보았습니다.( 이전 부분에서 읽을 수 있습니다. - [이전 주소 계산](https://github.com/0xAX/linux-insides/blob/v4.16/Booting/linux-bootstrap-4.md#calculate-relocation-address)), 하지만 부트로더가 64 비트 부팅 프로토콜을 사용할 수 있고 `startup_32`는 이 경우 실행되지 않으므로 이 계산을 다시 수행해야 합니다.
 
-In the next step we can see setup of the stack pointer, resetting of the flags register and setup `GDT` again because of in a case of `64-bit` protocol `32-bit` code segment can be omitted by bootloader:
+다음 단계에서 스택 포인터의 설정을 볼 수 있습니다. `64비트` 프로토콜의 경우 `32비트` 코드 세그먼트는 부트로더에 의해 생략될 수 있기 때문에 플래그 레지스터와 GDT를 재설정 해야 합니다. 
 
 ```assembly
     leaq	boot_stack_end(%rbx), %rsp
@@ -75,9 +75,9 @@ In the next step we can see setup of the stack pointer, resetting of the flags r
     popfq
 ```
 
-If you look at the Linux kernel source code after `lgdt gdt64(%rip)` instruction, you will see that there is some additional code. This code builds trampoline to enable [5-level pagging](https://lwn.net/Articles/708526/) if need. We will consider only 4-level paging in this books, so this code will be omitted.
+`lgdt gdt64(%rip)` 명령 후 리눅스 커널 소스 코드를 보면, 추가 코드가 있음을 알 수 있습니다. 이 코드는 필요한 경우[5-level pagging](https://lwn.net/Articles/708526/)을 성화 하기 위해 트럼팰린을 빌드합니다. 이 책에서는 4단계 페이징만 고려하므로 이 코드는 생략합니다.
 
-As you can see above, the `rbx` register contains the start address of the kernel decompressor code and we just put this address with `boot_stack_end` offset to the `rsp` register which represents pointer to the top of the stack. After this step, the stack will be correct. You can find definition of the `boot_stack_end` in the end of [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) assembly source code file:
+위에서 본 것 처럼, `rbx` 레지스터는 커널 디컴프레서 코드의 시작 주소를 포함하고 우리는 이 주소를 `boot_stack_end` 오프셋을 스택 상단에 대한 포인터를 나타내는 `rsp` 레지스터에 넣습니다. 이 단계가 끝나면 스택은 정확할 것입니다.  You can find definition of the `boot_stack_end` in the end of [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/head_64.S) 어셈블리 소스 파일:
 
 ```assembly
 	.bss
