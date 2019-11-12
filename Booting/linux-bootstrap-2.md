@@ -484,7 +484,7 @@ for (devno = 0x80; devno < 0x80+EDD_MBR_SIG_MAX; devno++) {
 
 where `0x80` is the first hard drive and the value of the `EDD_MBR_SIG_MAX` macro is 16. It collects data into an array of [edd_info](https://github.com/torvalds/linux/blob/v4.16/include/uapi/linux/edd.h) structures. `get_edd_info` checks that EDD is present by invoking the `0x13` interrupt with `ah` as `0x41` and if EDD is present, `get_edd_info` again calls the `0x13` interrupt, but with `ah` as `0x48` and `si` containing the address of the buffer where EDD information will be stored.
 
-Conclusion
+결론
 --------------------------------------------------------------------------------
 
 이것으로 리눅스 커널 내부의 두 번째 부분은 끝입니다. 다음 부분에서는 비디오 모드 설정과 보호 모드로 전환하기 전 준비과정의 나머지 부분들, 그리고 직접 전환하는 과정을 보도록 하겠습니다.
@@ -493,7 +493,7 @@ Conclusion
 
 **영어는 제 모국어가 아닙니다, 그리고 여타 불편하셨던 점에 대해서 정말로 사과드립니다. 만약 실수들을 찾아내셨다면 부디 [linux-insides 원본](https://github.com/0xAX/linux-internals)으로, 번역에 대해서는 [linux-insides 한국 번역](https://github.com/junsooo/linux-insides-ko)로 PR을 보내주세요.**
 
-Links
+링크들
 --------------------------------------------------------------------------------
 
 * [Protected mode](http://en.wikipedia.org/wiki/Protected_mode)
