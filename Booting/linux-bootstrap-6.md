@@ -1,4 +1,4 @@
-커널 부팅 프로세스. Part 6.
+커널 부팅 과정. Part 6.
 ================================================================================
 
 시작
@@ -19,18 +19,18 @@ config PHYSICAL_START
       ...
 ```
 
-이 값은 커널 구성 중에 변경 될 수 있으며, 로드될 주소는 임의의 값으로 선택할 수 있습니다. 이를 위해 커널 구성 중에 커널 구성 옵션 `CONFIG_RANDOMIZE_BASE` 을 활성화해야합니다.
+이 값은 커널 구성 중에 변경 될 수 있으며, 로드될 주소는 랜덤한 값으로 선택할 수 있습니다. 이를 위해 커널 구성 중에 커널 구성 옵션 `CONFIG_RANDOMIZE_BASE` 을 활성화해야합니다.
 
 이 경우 Linux 커널 이미지를 압축 해제하고 로드할 실제 주소는 랜덤으로 지정됩니다. 이 부분에서는 이 옵션이 활성화되어있고 커널 이미지의 로드 주소가 [보안상의 이유로](https://en.wikipedia.org/wiki/Address_space_layout_randomization) 랜덤한 경우를 고려합니다.
 
 페이지 테이블의 초기화
 --------------------------------------------------------------------------------
 
-커널 압축 해제 프로그램이 커널을 압축 해제하고 로드할 랜덤한 메모리 범위를 찾기 시작하기 전에 아이디 매핑 페이지 테이블을 초기화해야합니다. 만약 [bootloader](https://en.wikipedia.org/wiki/Booting)가 [16 비트 또는 32 비트 부트 프로토콜](https://github.com/torvalds/linux/blob/v4.16/Documentation/x86/boot.txt)을 사용한다면, 우리에게는 이미 페이지 테이블이 있습니다. 그러나 커널 압축 해제 프로그램이 메모리 범위 밖에서 메모리 범위를 선택하는 경우 필요에 따라 새 페이지가 필요할 수 있습니다. 그렇기 때문에 ID 매핑 페이지 테이블을 새로 만들어야합니다.
+커널 압축 해제 프로그램이 커널을 압축 해제하고 로드할 랜덤한 메모리 범위를 찾기 시작하기 전에 아이디 매핑 페이지 테이블을 초기화해야합니다. 만약 [부트로더](https://ko.wikipedia.org/wiki/부팅)가 [16 비트 또는 32 비트 부트 프로토콜](https://github.com/torvalds/linux/blob/v4.16/Documentation/x86/boot.txt)을 사용한다면, 우리에게는 이미 페이지 테이블이 있습니다. 그러나 커널 압축 해제 프로그램이 메모리 범위 밖에서 메모리 범위를 선택하는 경우 필요에 따라 새 페이지가 필요할 수 있습니다. 그렇기 때문에 ID 매핑 페이지 테이블을 새로 만들어야합니다.
 
 그렇습니다, ID 매핑 된 페이지 테이블을 작성하는 것은 로드 주소를 랜덤화하는 첫 번째 단계 중 하나입니다. 그러나 우리가 그것을 고려하기 전에, 우리가 어디에서 왔는지 기억해 봅시다.
 
-우리는 [이전 부분](linux-bootstrap-5.md)에서 [long mode](https://en.wikipedia.org/wiki/Long_mode)을 보았고, 커널 압축 해제의 엔트리 포인트인 `extract_kernel` 함수로 이동합니다. 랜덤화는 다음 호출 함수:
+우리는 [이전 부분](linux-bootstrap-5.md)에서 [롱 모드](https://en.wikipedia.org/wiki/Long_mode)을 보았고, 커널 압축 해제의 엔트리 포인트인 `extract_kernel` 함수로 이동합니다. 랜덤화는 다음 호출 함수:
 
 ```C
 void choose_random_location(unsigned long input,
@@ -169,7 +169,7 @@ struct x86_mapping_info {
 };
 ```
 
-이 구조는 메모리 매핑에 대한 정보를 제공합니다. 이전 부분에서 초기 페이지 테이블울 0에서`4G까지 설정했던 것을 기억하실 것 입니다. 현재 커널을 임의의 위치에 로드하기 위해 `4G` 이상의 메모리에 액세스해야 할 수도 있습니다. 따라서 'initialize_identity_maps'함수는 필요한 새 페이지 테이블에 대해 메모리 영역의 초기화를 실행합니다. 우선 `x86_mapping_info` 구조의 정의를 살펴 봅시다.
+이 구조는 메모리 매핑에 대한 정보를 제공합니다. 이전 부분에서 초기 페이지 테이블울 0에서 4G까지 설정했던 것을 기억하실 것 입니다. 현재 커널을 임의의 위치에 로드하기 위해 `4G` 이상의 메모리에 액세스해야 할 수도 있습니다. 따라서 `initialize_identity_maps` 함수는 필요한 새 페이지 테이블에 대해 메모리 영역의 초기화를 실행합니다. 우선 `x86_mapping_info` 구조의 정의를 살펴 봅시다.
 
 `alloc_pgt_page`는 페이지 테이블 엔트리를 위한 공간을 할당하기 위해 호출되는 콜백 함수입니다. `context` 필드는 할당 된 페이지 테이블을 추적하는 데 사용될 우리의 경우 `alloc_pgt_data` 구조의 인스턴스입니다. `page_flag` 및 `kernpg_flag` 필드는 페이지 플래그입니다. 첫 번째는 'PMD'또는 'PUD'항목에 대한 플래그를 나타냅니다. 두 번째 'kernpg_flag' 필드는 나중에 무시할 수있는 커널 페이지에 대한 플래그를 나타냅니다. `direct_gbpages` 필드는 거대한 페이지에 대한 지원을 나타내고, 마지막 'offset'필드는 커널 가상 주소와 실제 주소 사이의 최대 PMD 수준 오프셋을 나타냅니다.
 
@@ -283,7 +283,7 @@ if (!info->kernpg_flag)
 	info->kernpg_flag = _KERNPG_TABLE;
 ```
 
-그리고 주어진 주소와 관련된 새 2MB(`mapping_info.page_flag`의 `PSE` 비트로 인해)를 페이지 엔트리([5레벨 페이지 테이블](https://lwn.net/Articles/717293/) 의 경우 `PGD -> P4D -> PUD -> PMD`, [4레벨 페이지 테이블](https://lwn.net/Articles/117749/) 의 경우 `PGD -> PUD -> PMD`)에 빌드하기 시작합니다.
+그리고 주어진 주소와 관련된 새 2MB(`mapping_info.page_flag`의 `PSE` 비트로 인해)를 페이지 엔트리([5레벨 페이지 테이블](https://lwn.net/Articles/717293/)의 경우 `PGD -> P4D -> PUD -> PMD`, [4레벨 페이지 테이블](https://lwn.net/Articles/117749/)의 경우 `PGD -> PUD -> PMD`)에 빌드하기 시작합니다.
 
 ```C
 for (; addr < end; addr = next) {
@@ -324,7 +324,7 @@ min_addr = min(*output, 512UL << 20);
 random_addr = find_random_phys_addr(min_addr, output_size);
 ```
 
-`find_random_phys_addr` 함수는 소스 코드 파일 [same](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/kaslr.c)에 정의되어 있습니다.
+`find_random_phys_addr` 함수는 [같은](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/kaslr.c) 소스 코드 파일에 정의되어 있습니다.
 
 ```
 static unsigned long find_random_phys_addr(unsigned long minimum,
@@ -376,7 +376,7 @@ if (*output != random_addr) {
 }
 ```
 
-이제부터 `output`은 커널이 압축 해제 될 메모리 영역의 기본 주소를 저장합니다. 그러나 현재로서는 기억하듯이 물리적 주소만 랜덤으로 배정했습니다. [x86_64](https://en.wikipedia.org/wiki/X86-64) 아키텍처의 경우에는 가상 주소도 무작위로 지정해야합니다.
+이제부터 `output`은 커널이 압축 해제 될 메모리 영역의 기본 주소를 저장합니다. 그러나 현재로서는 기억하듯이 물리적 주소만 랜덤으로 배정했습니다. [x86_64](https://ko.wikipedia.org/wiki/X86-64) 아키텍처의 경우에는 가상 주소도 무작위로 지정해야합니다.
 
 ```C
 if (IS_ENABLED(CONFIG_X86_64))
