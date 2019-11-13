@@ -14,7 +14,7 @@
 
 **참고** 보호 모드가 무엇인지 모르는 분은 이전 [파트](linux-bootstrap-2.md#protected-mode)에서 정보를 찾아볼 수 있습니다. 또한 도움을 줄 수 있는 몇 가지  [링크](linux-bootstrap-2.md#links)가 있습니다.
 
-소스코드파일[arch/x86/boot/video.c](https://github.com(https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/video.c)에 정의되어 있는 `set_video` 함수에서 시작합니다. 제일 먼저 `boot_params.hdr`구조에서 비디오 모드를 가져옵니다.
+소스코드파일[arch/x86/boot/video.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/video.c)에 정의되어 있는 `set_video` 함수에서 시작합니다. 제일 먼저 `boot_params.hdr`구조에서 비디오 모드를 가져옵니다.
 
 
 ```C
@@ -78,7 +78,7 @@ vga=<mode>
 #define RESET_HEAP()
 ```
 
-위에서 본 것처럼 `HEAP`의 `_end`변수를 설정함으로써 힙을 초기화합니다. `_end`는 `extern char _end[];에 있습니다.`
+위에서 본 것처럼 `HEAP`의 `_end`변수를 설정함으로써 힙을 초기화합니다. `_end`는 `extern char _end[];`에 있습니다.
 
 
 다음은 `GET_HEAP`매크로입니다:
@@ -163,9 +163,9 @@ x = rdfs16(0x44a);
 y = (adapter == ADAPTER_CGA) ? 25 : rdfs8(0x484)+1;
 ```
 
-다음으로 주소`0x44a`에서 열의 양을, 주소`0x484`에서 행의 양을 가져오고 그것들을 `boot_params.screen_info.orig_video_cols`과 `boot_params.screen_info.orig_video_lines`에 저장합니다. 그 다음 `store_mode_params`을 실행하면 끝입니다.
+다음으로 주소`0x44a`에서 열의 개수를, 주소`0x484`에서 행의 개수를 가져오고 그것들을 `boot_params.screen_info.orig_video_cols`과 `boot_params.screen_info.orig_video_lines`에 저장합니다. 그 다음 `store_mode_params`을 실행하면 끝입니다.
 
-다음으로 화면의 내용을 힙에 저장하는 `save_screen`함수입니다. 이 함수는 이전의 함수에서 얻은 모든 데이터(행과 열, 재료 등)를 수집하여 다음과 같이 정의된 `saved_screen`구조에 저장합니다.
+다음으로 화면의 내용을 힙에 저장하는 `save_screen`함수입니다. 이 함수는 이전의 함수에서 얻은 모든 데이터(행과 열, 재료 등)를 수집하여 다음과 같이 정의된 `saved_screen`구조체에 저장합니다.
 
 ```C
 static struct saved_screen {
@@ -208,7 +208,7 @@ static __videocard video_vga = {
 #define __videocard struct card_info __attribute__((used,section(".videocards")))
 ```
 
-이는 `card_info`구조를 의미합니다.
+이는 `card_info`구조체를 의미합니다.
 
 ```C
 struct card_info {
@@ -233,15 +233,15 @@ struct card_info {
 	}
 ```
 
-이것은 `video_cards`는 단순한 메모리 주소이며 모든 `card_info`구조는 세그먼트에 배치된다는 것을 의미합니다. 모든 `card_info` 구조는 `video_cards`와 `video_cards_end` 사이에 배치되므로 루프를 사용하여 모든 구조를 살핍니다. `probe_cards`가 실행되면 `static __videocard video_vga`이나 `nmodes`(비디오 모드의 수)가 채워진 것과 같은 구조들을 가집니다.
+이것은 `video_cards`는 단순한 메모리 주소이며 모든 `card_info`구조체는 세그먼트에 배치된다는 것을 의미합니다. 모든 `card_info` 구조체는 `video_cards`와 `video_cards_end` 사이에 배치되므로 루프를 사용하여 모든 구조체를 살핍니다. `probe_cards`가 실행되면 `static __videocard video_vga`이나 `nmodes`(비디오 모드의 수)가 채워진 것과 같은 구조체들을 가집니다.
 
 
 다음으로 `probe_cards`함수를 수행하면 `set_video`함수의 메인루프로 이동합니다. 커널 커맨드 라인에 `vid_mode=ask`가 전달되거나 비디오 모드가 정의되지 않은 경우 `set_mode`함수로 비디오 모드를 설정하거나 메뉴를 출력하는 무한루프가 있습니다.
 
-`set_mode`함수는 [video-mode.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/video-mode.c)에 정의되어 있으며 비디오 모드의 개수인 매개변수 하나, `mode`만 가져옵니다(이 값은 메뉴 또는 커널 설정 헤더의 시작부분 `setup_video`에서 얻음).
+`set_mode`함수는 [video-mode.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/video-mode.c)에 정의되어 있으며 매개변수로 비디오 모드의 개수인 `mode`하나만 가져옵니다(이 값은 메뉴 또는 커널 설정 헤더의 시작부분 `setup_video`에서 얻음).
 
 
-`set_mode`함수는 `mode`를 확인하고 `raw_set_mode`함수를 호출합니다. `raw_set_mode`는 `set_mode`함수에서 선택된 카드 `card->set_mode(struct mode_info*)`를 호출합니다. `card_info`구조 함수에 접근할 수 있습니다. 모든 비디오 모드는 비디오 모드에 의해 채워진 값으로 구조를 정의합니다.(예를 들어 `vga`는 `video_vga.set_mode`함수입니다. 위의 예시를 보면 `card_info`구조는 `vga`입니다). `video_vga.set_mode`는 `vga_set_mode`이므로 vga 모드를 확인하고 해당 함수를 호출합니다.
+`set_mode`함수는 `mode`를 확인하고 `raw_set_mode`함수를 호출합니다. `raw_set_mode`는 `set_mode`함수에서 선택된 카드 `card->set_mode(struct mode_info*)`를 호출합니다. `card_info`구조체 함수에 접근할 수 있습니다. 모든 비디오 모드는 비디오 모드에 의해 채워진 값으로 구조체를 정의합니다.(예를 들어 `vga`는 `video_vga.set_mode`함수입니다. 위의 예시를 보면 `card_info`구조체는 `vga`입니다). `video_vga.set_mode`는 `vga_set_mode`이므로 vga 모드를 확인하고 해당 함수를 호출합니다.
 
 ```C
 static int vga_set_mode(struct mode_info *mode)
@@ -296,7 +296,7 @@ static int vga_set_mode(struct mode_info *mode)
 먼저 `go_to_protected_mode`의 `realmode_switch_hook`함수를 호출합니다. 이 함수는 리얼 모드 스위치 후크가 있으면 이를 호출하고 [NMI](http://en.wikipedia.org/wiki/Non-maskable_interrupt)를 비활성화합니다. 부트로더가 적대적인 환경에서 실행되는 경우 후크가 사용됩니다. [boot protocol](https://www.kernel.org/doc/Documentation/x86/boot.txt)에서 후크에 대한 자세한 내용을 볼 수 있습니다(**고급 부트 로더 후크**참조).
 
 
-`realmode_switch`는 16비트 리얼 모드까지 마스크 불가능 인터럽트를 비활성화, 서브루틴에 대한 포인터를 제공합니다. `realmode_switch`후크를 확인한 후, 마스크 불가능 인터럽트(NMI)는 사용할 수 없습니다.
+`realmode_switch`후크는 마스크 불가능 인터럽트를 비활성화하는 16 비트 리얼 모드 원거리 서브루틴에 대한 포인터를 제공합니다. `realmode_switch`후크를 확인한 후, 마스크 불가능 인터럽트(NMI)는 사용할 수 없습니다.
 
 ```assembly
 asm volatile("cli");
@@ -394,7 +394,7 @@ static void setup_idt(void)
 }
 ```
 
-인터럽트 디스크립터 테이블을 설정합니다(인터럽트 핸들러 등을 설명). 현재는 IDT가 설치되지 않았지만(나중에 볼 예정), `lidtl` 명령과 IDT를 불러오면 됩니다. `null_idt`는 주소와 IDT의 크기를 포함하지만 현재는 0입니다. `null_idt`는 `gdt_ptr`구조로 다음과 같이 정의됩니다:
+인터럽트 디스크립터 테이블을 설정합니다(인터럽트 핸들러 등을 설명). 현재는 IDT가 설치되지 않았지만(나중에 볼 예정), `lidtl` 명령과 IDT를 불러오면 됩니다. `null_idt`는 주소와 IDT의 크기를 포함하지만 현재는 0입니다. `null_idt`는 `gdt_ptr`구조체로 다음과 같이 정의됩니다:
 
 ```C
 struct gdt_ptr {
@@ -418,7 +418,7 @@ static const u64 boot_gdt[] __attribute__((aligned(16))) = {
 };
 ```
 
-코드, 데이터 및 TSS(Task State Segment)에서 현재 작업 상태 세그먼트를 사용하지 않을 것입니다. 주석 행에서 볼 수 있듯이 이것은 Intel VT를 적절히하기 위해 추가되었습니다(관심이 있는 경우 [여기](https://github.com/torvalds/linux/commit/88089519f302f1296b4739be45699f06f728ec31)에서 설명하는 커밋을 찾을 수 있습니다). `boot_gdt`을 봅시다. 우선 `__attribute__((aligned(16)))`속성이 있습니다. 이는 이 구조가 16바이트로 정렬되는 것을 의미합니다.
+코드, 데이터 및 TSS(Task State Segment)에서 현재 작업 상태 세그먼트를 사용하지 않을 것입니다. 주석 행에서 볼 수 있듯이 이것은 Intel VT를 적절히하기 위해 추가되었습니다(관심이 있는 경우 [여기](https://github.com/torvalds/linux/commit/88089519f302f1296b4739be45699f06f728ec31)에서 설명하는 커밋을 찾을 수 있습니다). `boot_gdt`을 봅시다. 우선 `__attribute__((aligned(16)))`속성이 있습니다. 이는 이 구조체가 16바이트로 정렬되는 것을 의미합니다.
 
 간단한 예제를 봅시다:
 
@@ -439,13 +439,13 @@ int main(void)
 	struct nonaligned na;
 
 	printf("Not aligned - %zu \n", sizeof(na));
-	printf("Aligned - %zu \n", sizeof(a));
+	printf("Aligned - %zu \n", sizeof(a));체
 
 	return 0;
 }
 ```
 
-기술적으로 `int`필드를 포함하는 구조는 4바이트여야 하지만 `aligned`구조는 메모리에 저장하기 위해 16바이트가 필요합니다.
+기술적으로 `int`필드를 포함하는 구조체는 4바이트여야 하지만 `aligned`구조체는 메모리에 저장하기 위해 16바이트가 필요합니다.
 
 ```
 $ gcc test.c -o test && test
