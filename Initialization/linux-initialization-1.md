@@ -1,4 +1,4 @@
-커널 초기화. Part 1.
+커널 초기화. Part 1
 ================================================================================
 
 커널 코드의 첫 단계
@@ -392,7 +392,7 @@ NEXT_PAGE(early_dynamic_pgts)
 1:	wrmsr
 ```
 
-[NX](https://en.wikipedia.org/wiki/NX_bit)비트가 지원되는 경우 `_EFER_NX`를 활성화하고 `wrmsr`명령을 사용하여 쓰십시오. [NX](https://en.wikipedia.org/wiki/NX_bit)비트가 설정된 후, 우리는 다음 어셈블리 코드를 사용하여 `cr0` [제어 레지스터](https://en.wikipedia.org/wiki/Control_register)에 있는 몇몇 비트들을 설정한다:
+[NX](https://en.wikipedia.org/wiki/NX_bit)비트가 지원되는 경우 `_EFER_NX`를 활성화하고 `wrmsr`명령을 사용하여 쓰십시오. [NX](https://en.wikipedia.org/wiki/NX_bit)비트가 설정된 후, 우리는 다음 어셈블리 코드를 사용하여 `cr0` [제어 레지스터](https://en.wikipedia.org/wiki/Control_register)에 있는 몇몇 비트들을 설정합니다:
 
 ```assembly
 	movl	$CR0_STATE, %eax
@@ -417,7 +417,7 @@ NEXT_PAGE(early_dynamic_pgts)
 	popfq
 ```
 
-여기서 가장 흥미로운 것은 `initial_stack`입니다. 이 심볼은 [소스](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S)코드 파일에 정의되어 있으며 다음과 같습니다.
+여기서 가장 흥미로운 것은 `initial_stack`입니다. 이 심볼은 [소스 코드 파일](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S)코드 파일에 정의되어 있으며 다음과 같습니다.
 
 ```assembly
 GLOBAL(initial_stack)
@@ -437,7 +437,7 @@ GLOBAL(initial_stack)
 #define THREAD_SIZE  (PAGE_SIZE << THREAD_SIZE_ORDER)
 ```
 
-[kasan](https://github.com/torvalds/linux/blob/master/Documentation/dev-tools/kasan.rst)이 비활성화되고 `PAGE_SIZE`가 `4096` 바이트 인 경우를 고려합니다. 따라서 `THREAD_SIZE`는 `16`킬로바이트로 확장되며 스레드 스택의 크기를 나타냅니다. 왜 `스레드`입니까? 각 [프로세스](https://en.wikipedia.org/wiki/Process_%28computing%29)에 [부모 프로세스](https://en.wikipedia.org/wiki/Parent_process)와 [자식 프로세스](https://en.wikipedia.org/wiki/Child_process)가 있을 것을 이미 알고 있을 것입니다. 실제로 부모 프로세스와 자식 프로세스는 스택에서 다릅니다. 새로운 프로세스에 새로운 커널 스택이 할당됩니다. 리눅스 커널에서　이 스택은　`thread_info` 구조를 가진 [union](https://en.wikipedia.org/wiki/Union_type#C.2FC.2B.2B)으로 표현됩니다.
+[kasan](https://github.com/torvalds/linux/blob/master/Documentation/dev-tools/kasan.rst)이 비활성화되고 `PAGE_SIZE`가 `4096` 바이트 인 경우를 고려합니다. 따라서 `THREAD_SIZE`는 `16`킬로바이트로 확장되며 스레드 스택의 크기를 나타냅니다. 왜 `스레드`일까요? 각 [프로세스](https://en.wikipedia.org/wiki/Process_%28computing%29)에 [부모 프로세스](https://en.wikipedia.org/wiki/Parent_process)와 [자식 프로세스](https://en.wikipedia.org/wiki/Child_process)가 있을 것을 이미 알고 있을 것입니다. 실제로 부모 프로세스와 자식 프로세스는 스택에서 다릅니다. 새로운 프로세스에 새로운 커널 스택이 할당됩니다. 리눅스 커널에서　이 스택은　`thread_info` 구조를 가진 [union](https://en.wikipedia.org/wiki/Union_type#C.2FC.2B.2B)으로 표현됩니다.
 
 `init_thread_union`은　`thread_union`으로 표시됩니다. `thread_union`은 다음과 같이 [include/linux/sched.h](https://github.com/torvalds/linux/blob/master/include/linux/sched.h) 파일에 정의되어 있습니다：
 
@@ -453,7 +453,7 @@ union thread_union {
 };
 ```
 
-`CONFIG_ARCH_TASK_STRUCT_ON_STACK` 커널 구성 옵션은　`ia64`아키텍처에서만 활성화되며　`CONFIG_THREAD_INFO_IN_TASK` 커널 구성 옵션은　`x86_64` 아키텍처에서 활성화됩니다. 따라서 ｀thread_info｀구조는 ｀thread_union｀공용체 대신 ｀task_struct｀구조에 배치됩니다.
+`CONFIG_ARCH_TASK_STRUCT_ON_STACK` 커널 구성 옵션은　`ia64`아키텍처에서만 활성화되며　`CONFIG_THREAD_INFO_IN_TASK` 커널 구성 옵션은　`x86_64` 아키텍처에서 활성화됩니다. 따라서 ｀thread_info｀구조체는 ｀thread_union｀공용체 대신 ｀task_struct｀구조체에 배치됩니다.
 
 `init_thread_union`은 [include/asm-generic/vmlinux.lds.h](https://github.com/torvalds/blob/master/include/asm-generic/vmlinux.lds.h) 파일에 다음과 같은 `INIT_TASK_DATA`매크로의 일부로 배치됩니다:
 
@@ -465,7 +465,7 @@ union thread_union {
 	...
 ```
 
-이 매크로는 [arch/x86/kernel/vmlinux.lds.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/vmlinux.lds.S)파일에서 사용됩니다 다음과 같이:
+이 매크로는 [arch/x86/kernel/vmlinux.lds.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/vmlinux.lds.S)파일에서 다음과 같이 사용됩니다:
 
 ```
 .data : AT(ADDR(.data) - LOAD_OFFSET) {
@@ -475,7 +475,7 @@ union thread_union {
 } :data
 ```
 
-즉, `init_thread_union`은 `16`킬로바이트인 `THREAD_SIZE`에 정렬 된 주소로 초기화된다.
+즉, `init_thread_union`은 `16`킬로바이트인 `THREAD_SIZE`에 정렬 된 주소로 초기화됩니다.
 
 이제 우리는 이 표현을 이해할 수 있습니다:
 
@@ -503,9 +503,9 @@ early_gdt_descr_base:
 
 커널은 낮은 사용자 공간 주소에서 작동하지만 곧 커널은 자체 공간에서 작동하기 때문에 `글로벌 디스크럽터 테이블`을 다시 로드해야합니다.
 
-이제 `early_gdt_descr`의 정의를 보자. `GDT_ENTRIES`는 `32`로 확장되어 글로벌 디스크럽터 테이블에 커널 코드, 데이터, 스레드 로컬 스토리지 세그먼트 등에 대한 `32` 항목이 포함됩니다.
+이제 `early_gdt_descr`의 정의를 봅시다. `GDT_ENTRIES`는 `32`로 확장되어 글로벌 디스크럽터 테이블에 커널 코드, 데이터, 스레드 로컬 스토리지 세그먼트 등에 대한 `32` 항목이 포함됩니다.
 
-이제 `early_gdt_descr_base`의 정의를 보자. `gdt_page`구조는 [arch/x86/include/asm/desc.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/desc.h)에 정의되어 있습니다:
+이제 `early_gdt_descr_base`의 정의를 봅시다. `gdt_page`구조체는 [arch/x86/include/asm/desc.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/desc.h)에 정의되어 있습니다:
 
 ```C
 struct gdt_page {
@@ -513,7 +513,7 @@ struct gdt_page {
 } __attribute__((aligned(PAGE_SIZE)));
 ```
 
-여기에는 다음과 같이 정의되는 `desc_struct` 구조의 배열인 하나의 필드 `gdt`가 포함됩니다:
+여기에는 다음과 같이 정의되는 `desc_struct` 구조체의 배열인 하나의 필드 `gdt`가 포함됩니다:
 
 ```C
 struct desc_struct {
@@ -550,9 +550,9 @@ INIT_PER_CPU(gdt_page);
 
 `INIT_PER_CPU_VAR`에 `init_per_cpu__gdt_page`가 있고 링커 스크립트에서 `INIT_PER_CPU` 매크로가 확장되면 `__per_cpu_load`에서 오프셋을 얻습니다. 이 계산 후에는 새 GDT의 정확한 기본 주소를 갖게됩니다.
 
-일반적으로 CPU 별 변수는 2.6 커널 기능입니다. 이름에서 무엇인지 이해할 수 있습니다. 우리가 `per-CPU '변수를 만들면, 각 CPU는 이 변수의 자체 복사본을 갖게됩니다. 여기서 우리는 CPU 당 `gdt_page`를 만들고 있습니다. 각 CPU가 고유한 변수 사본 등으로 작동하므로 잠금이없는 것처럼 이 유형의 변수에는 많은 이점이 있습니다. 따라서 멀티 프로세서의 모든 코어에는 자체 `GDT`테이블과 코어에서 실행 된 스레드에서 액세스 할 수있는 메모리 세그먼트를 나타내는 테이블의 모든 항목이 있습니다. [Concepts/per-cpu](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html) 포스트에서 `per-CPU`변수에 대한 자세한 내용을 읽을 수 있습니다.
+일반적으로 CPU 별 변수는 2.6 커널 기능입니다. 이름에서 무엇인지 이해할 수 있습니다. 우리가 `per-CPU '변수를 만들면, 각 CPU는 이 변수의 자체 복사본을 갖게됩니다. 여기서 우리는 CPU 당 `gdt_page`를 만들고 있습니다. 각 CPU가 고유한 변수 사본 등으로 작동하므로 이 타입의 변수에는 잠금이 없다는 것과 같은 많은 이점이 있습니다. 따라서 멀티 프로세서의 모든 코어에는 자체 `GDT`테이블과 코어에서 실행 된 스레드에서 액세스 할 수있는 메모리 세그먼트를 나타내는 테이블의 모든 항목이 있습니다. [Concepts/per-cpu](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html) 포스트에서 `per-CPU`변수에 대한 자세한 내용을 읽을 수 있습니다.
 
-새로운　글로벌　디스크럽터　테이블을　로드 할 때마다 매번 수행 한 것처럼 세그먼트를 다시로드합니다：
+새로운　글로벌　디스크럽터　테이블을　로드 할 때마다 매번 해왔듯이 세그먼트를 다시로드합니다：
 
 ```assembly
 	xorl %eax,%eax
