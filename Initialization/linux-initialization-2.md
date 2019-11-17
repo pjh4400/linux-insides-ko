@@ -79,9 +79,9 @@ CPU는 `인터럽트 디스크립터 테이블 (Interrupt Descriptor Table)`에�
 ----------------------------------------------------------------------------------------------
 ```
 
-To react on interrupt CPU uses special structure - Interrupt Descriptor Table or IDT. IDT is an array of 8-byte descriptors like Global Descriptor Table, but IDT entries are called `gates`. CPU multiplies vector number by 8 to find the IDT entry. But in 64-bit mode IDT is an array of 16-byte descriptors and CPU multiplies vector number by 16 to find the entry in the IDT. We remember from the previous part that CPU uses special `GDTR` register to locate Global Descriptor Table, so CPU uses special register `IDTR` for Interrupt Descriptor Table and `lidt` instruction for loading base address of the table into this register.
+CPU 인터럽트에 반응하기 위해선 인터럽트 디스크립터 테이블(Interrupt Descriptor Table) 또는 IDT라고 불리는 특수한 구조체를 사용합니다. IDT는 Global Descriptor Table과 같은 8 바이트 디스크립터 배열이지만 IDT의 엔트리(항목)들은 '게이트'(`gates`) 라고 불립니다. CPU는 벡터 번호에 8을 곱하여 IDT 엔트리를 찾습니다. 그러나 64 비트 모드에선 IDT는 16 바이트 디스크립터 배열이며 CPU는 벡터 번호에 16을 곱하여 IDT에서 엔트리를 찾습니다. 이전 부분의 내용을 기억하시듯, CPU는 전역 디스크립터 테이블(`Global Descriptor Table`)을 찾기 위해 특수한 `GDTR`레지스터를 사용하므로 CPU는 인터럽트 디스크립터 테이블에 `IDTR`이라는 특수한 레지스터를 사용하고 테이블의 기본 주소를 이 레지스터에 로드하기 위해 `lidt`명령을 사용합니다.
 
-64-bit mode IDT entry has following structure:
+64비트 모드의 IDT 요소들은 다음 구조를 따릅니다:
 
 ```
 127                                                                             96
@@ -110,19 +110,19 @@ To react on interrupt CPU uses special structure - Interrupt Descriptor Table or
  --------------------------------------------------------------------------------
 ```
 
-Where:
+여기서:
 
-* `Offset` - is offset to entry point of an interrupt handler;
-* `DPL` -    Descriptor Privilege Level;
-* `P` -      Segment Present flag;
-* `Segment selector` - a code segment selector in GDT or LDT
-* `IST` -    provides ability to switch to a new stack for interrupts handling.
+* `Offset` - 인터럽트 핸들러의 엔트리 지점까지의 오프셋;
+* `DPL` -    Descriptor Privilege Level (디스크립터 권한 레벨);
+* `P` -      세그먼트 존재여부(Present) 플래그;
+* `Segment selector` - GDT 또는 LDT의 코드 세그먼트 셀렉터
+* `IST` -    인터럽트 처리를 위해 새 스택으로 전환하는 기능을 제공
 
-And the last `Type` field describes type of the `IDT` entry. There are three different kinds of gates for interrupts:
+그리고 마지막 `Type` 필드는 `IDT` 엔트리의 유형(타입)을 기술합니다. 인터럽트에는 세 가지 종류의 게이트가 있습니다.
 
-* Task gate
-* Interrupt gate
-* Trap gate
+* 작업 게이트(Task gate)
+* 인터럽트 게이트(Interrupt gate)
+* 트랩 게이트(Trap gate)
 
 Interrupt and trap gates contain a far pointer to the entry point of the interrupt handler. Only one difference between these types is how CPU handles `IF` flag. If interrupt handler was accessed through interrupt gate, CPU clear the `IF` flag to prevent other interrupts while current interrupt handler executes. After that current interrupt handler executes, CPU sets the `IF` flag again with `iret` instruction.
 
