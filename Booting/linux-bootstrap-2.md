@@ -6,7 +6,7 @@
 
 우리는 [지난 시간](linux-bootstrap-1.md)에 리눅스 커널의 내부로 진입을 시작했고 커널 구성 코드의 일부를 살펴봤습니다. 우리는 [arch/x86/boot/main.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/main.c)의 `main`함수를 처음으로 호출하는 데에서 멈췄었습니다. (C로 짜여진 첫 번째 함수죠)
 
-이번 시간엔, 커널 구성 코드를 더 파헤처보고 아래 것들에 대해 알아봅시다.
+이번 시간엔, 커널 구성 코드를 더 파헤쳐보고 아래 것들에 대해 알아봅시다.
 * `protected mode`란 무엇인가
 * `protected mode`로의 이행
 * 힙과 콘솔의 초기화
@@ -85,12 +85,12 @@ lgdt gdt
   * 만약 `G` 가 1이고 segment limit가 0xfffff이면, 세그먼트의 크기는 4 GByte입니다.
 
  이말인 즉슨,
-  * 만약 G가 0이면, Limit 은 1 바이트로 해석되고, 세그먼트의 최대 크기는 1 메가바이트가 된다.
-  * 만약 G가 1이면, Limit 은 4096 Bytes = 4 KBytes = 1 Page 로 해석되고 세그먼트의 최대 크기는 4 기가바이트가 된다. 사실, G가 1일 때, Limit의 값은 왼쪽으로 12비트 이동(shift)된다. 그러므로 20 bit + 12 bit = 32 bit이고 2<sup>32</sup> = 4 Gigabytes이다.
+  * 만약 G가 0이면, Limit 은 1 바이트로 해석되고, 세그먼트의 최대 크기는 1 메가바이트가 됩니다.
+  * 만약 G가 1이면, Limit 은 4096 Bytes = 4 KBytes = 1 Page 로 해석되고 세그먼트의 최대 크기는 4 기가바이트가 됩니다. 사실, G가 1일 때, Limit의 값은 왼쪽으로 12비트 이동(shift)됩니다. 그러므로 20 bit + 12 bit = 32 bit이고 2<sup>32</sup> = 4 Gigabytes입니다.
 
-2. Base[32-bits] 는 16-31번째, 32-39번째, 그리고 56-63번째 비트들 사이에서 쪼개진다. 이것은 세그먼트의 시작 위치의 물리적 주소를 나타낸다.
+2. Base[32-bits] 는 16-31번째, 32-39번째, 그리고 56-63번째 비트들 사이에서 쪼개집니다. 이것은 세그먼트의 시작 위치의 물리적 주소를 나타냅니다.
 
-3. Type/Attribute[5-bits] 는 40-44번째 비트로 나타내어진다. 이것은 세그먼트의 종류와 어떻게 접근 가능한지를 나타낸다.
+3. Type/Attribute[5-bits] 는 40-44번째 비트로 나타내어집니다. 이것은 세그먼트의 종류와 어떻게 접근 가능한지를 나타냅니다.
   * 44번째 비트의 `S` 플래그는 디스크립터의 종류를 특정합니다. 만약 `S`가 0이면 이 세그먼트는 시스템 세그먼트이고, 만약 `S`가 1이면 이것은 코드 혹은 데이터 세그먼트입니다. (스택 세그먼트는 데이터 세그먼트이고, 읽기/쓰기 세그먼트여야 합니다.).
 
 특정 세그먼트가 코드 세그먼트인지 데이터 세그먼트인지 판별하기 위해서는, 그것의 Ex 속성(43번 비트)을 확인하면 됩니다 (위 다이어그램에는 0으로 표기되어있음). 만약 0이면, 그 세그먼트는 데이터 세그먼트이고, 그렇지 않다면 그건 코드 세그먼트입니다.
@@ -357,8 +357,6 @@ if (cpu_level < req_level) {
 }
 ```
 
-The `check_cpu` function checks the CPU's flags, the presence of [long mode](http://en.wikipedia.org/wiki/Long_mode) in the case of x86_64(64-bit) CPU, checks the processor's vendor and makes preparations for certain vendors like turning off SSE+SSE2 for AMD if they are missing, etc.
-
 `check_cpu` 함수는 x86_64 (64 비트) CPU의 경우 [long mode](http://en.wikipedia.org/wiki/Long_mode)의 존재 여부와 함께 CPU의 플래그를 확인하고 프로세서 공급 업체를 확인하여 가령 AMD일 경우 SSE + SSE2 끄기와 같이 특정 공급 업체를 위한 준비가 되어 있지 않은 경우, 해당 준비를 합니다.
 
 바로 다음 단계에서, 셋업 코드가 CPU가 적합하다는 것을 확인 한 후에`set_bios_mode` 함수를 호출하는 것을 볼 수 있습니다. 보시다시피 이 함수는`x86_64` 모드에서만 구현됩니다.
@@ -482,7 +480,7 @@ for (devno = 0x80; devno < 0x80+EDD_MBR_SIG_MAX; devno++) {
     }
 ```
 
-where `0x80` is the first hard drive and the value of the `EDD_MBR_SIG_MAX` macro is 16. It collects data into an array of [edd_info](https://github.com/torvalds/linux/blob/v4.16/include/uapi/linux/edd.h) structures. `get_edd_info` checks that EDD is present by invoking the `0x13` interrupt with `ah` as `0x41` and if EDD is present, `get_edd_info` again calls the `0x13` interrupt, but with `ah` as `0x48` and `si` containing the address of the buffer where EDD information will be stored.
+여기서 `0x80`은 첫 번째 하드 드라이브이고 `EDD_MBR_SIG_MAX` 매크로의 값은 16입니다.  [edd_info](https://github.com/torvalds/linux/blob/v4.16/include/uapi/linux/edd.h) 구조의 배열로 데이터를 수집합니다. `get_edd_info`는 `0x13` 인터럽트를 `0x41`인 `ah`로 호출하여 EDD가 존재하는지 확인하고, 만약 EDD가 존재하면 `get_edd_info`는 `0x13` 인터럽트를 한 번 더 호출하지만, 이번에는 `0x48`인 `ah`와 EDD 정보가 저장될 버퍼의 주소를 포함하는 `si`로 호출합니다.
 
 결론
 --------------------------------------------------------------------------------
