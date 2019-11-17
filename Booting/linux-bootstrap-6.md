@@ -147,7 +147,7 @@ boot_params->hdr.loadflags |= KASLR_FLAG;
 initialize_identity_maps();
 ```
 
-는 [arch/x86/boot/compressed/kaslr_64.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/kaslr_64.c) 소스코드 파일에 정의되어 있습니다. 이 함수는`x86_mapping_info` 구조의 인스턴스인 `mapping_info`의 초기화에서 시작합니다.
+는 [arch/x86/boot/compressed/kaslr_64.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/kaslr_64.c) 소스코드 파일에 정의되어 있습니다. 이 함수는`x86_mapping_info` 구조체의 인스턴스인 `mapping_info`의 초기화에서 시작합니다.
 
 ```C
 mapping_info.alloc_pgt_page = alloc_pgt_page;
@@ -202,7 +202,7 @@ pgt_data.pgt_buf_offset = 0;
 pgt_data.pgt_buf = _pgtable + BOOT_INIT_PGT_SIZE;
 ```
 
-여기서 _pgtable은 이 페이지 테이블의 시작을 가리킵니다 [_pgtable](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/vmlinux.lds.S). 다른 방법으로, 부트 로더가 64-비트 부트 프로토콜을 사용하고 `startup_64`에서 커널을 로드했다면, 초기 페이지 테이블은 부트 로더 자체에 의해 작성되어야하며 `_pgtable`은 그냥 덮어 쓰기됩니다 :
+여기서 _pgtable은 이 페이지 테이블의 시작을 가리킵니다 [_pgtable](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/compressed/vmlinux.lds.S). 다른 방법으로, 부트 로더가 64-비트 부트 프로토콜을 사용하고 `startup_64`에서 커널을 로드했다면, 초기 페이지 테이블은 부트 로더 자체에 의해 작성되어야하며 `_pgtable`은 그냥 덮어씌워집니다. :
 
 ```C
 pgt_data.pgt_buf = _pgtable
@@ -389,12 +389,12 @@ if (IS_ENABLED(CONFIG_X86_64))
 
 이 시점부터 우리는 압축 해제 된 커널에 대한 랜덤화 된 기본 물리적 (`* output`) 및 가상 (`* virt_addr`) 주소를 모두 가지고 있습니다.
 
-끝났습니다.
+끝입니다.
 
 결론
 --------------------------------------------------------------------------------
 
-이것이 리눅스 커널 부팅 프로세스의 6 번째이자 마지막 부분입니다. 우리는 더 이상 커널 부팅에 대한 게시물을 볼 수 없지만 (이 게시물과 이전 게시물에 대한 업데이트일 수 있음) 다른 커널 내부에 대한 게시물이 많이 있습니다.
+이것이 리눅스 커널 부팅 프로세스의 6 번째이자 마지막 부분입니다. 우리는 더 이상 커널 부팅에 대한 게시물을 볼 수 없지만 (이 게시물과 이전 게시물에 대한 업데이트는 있을 수 있음) 다른 커널 내부에 대한 게시물이 많이 있습니다.
 
 다음 장에서는 커널 초기화에 대해 설명하고 Linux 커널 초기화 코드의 첫 단계를 봅니다.
 
