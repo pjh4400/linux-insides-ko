@@ -14,7 +14,7 @@
 
 **참고** 보호 모드가 무엇인지 모르는 분은 이전 [파트](linux-bootstrap-2.md#protected-mode)에서 정보를 찾아볼 수 있습니다. 또한 도움을 줄 수 있는 몇 가지  [링크](linux-bootstrap-2.md#links)가 있습니다.
 
-소스코드파일[arch/x86/boot/video.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/video.c)에 정의되어 있는 `set_video` 함수에서 시작합니다. 제일 먼저 `boot_params.hdr`구조에서 비디오 모드를 가져옵니다.
+소스코드파일[arch/x86/boot/video.c](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/video.c)에 정의되어 있는 `set_video` 함수에서 시작합니다. 제일 먼저 `boot_params.hdr`구조체에서 비디오 모드를 가져옵니다.
 
 
 ```C
@@ -22,7 +22,7 @@ u16 mode = boot_params.hdr.vid_mode;
 ```
 
 
-`copy_boot_params` 함수가 채워져 있을 것입니니다(이전 포스트 참조). 이는  `vid_mode`부트로더를 채우는데 필요한 필드입니다. `boot protocol`커널에서 이에 대한 정보를 찾을 수 있습니다.
+`copy_boot_params` 함수로 값을 채웠었습니다(이전 포스트 참조). `vid_mode`는 부트로더로 인해 채워지는 필수 필드입니다. `boot protocol`커널에서 이에 대한 정보를 찾을 수 있습니다.
 
 ```
 Offset	Proto	Name		Meaning
@@ -352,7 +352,7 @@ static int a20_test(int loops)
 
 A20이 비활성화된 경우 `a20.c`에서 다른 방법을 찾아 활성화해야 합니다. 예를 들어, `AH=0x2041`를 써서 `0x15`BIOS 인터럽트를 호출할 수 있습니다.
 
-`enable_a20`함수가 실패하면 에러 메시지를 출력하고 `die`함수를 호출합니다. 첫 소스 코드 파일[arch/x86/boot/header.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/header.S)에서 이를 기억할 수 있습니다.
+`enable_a20`함수가 실패로 끝나면 에러 메시지를 출력하고 `die`함수를 호출합니다. 첫 소스 코드 파일[arch/x86/boot/header.S](https://github.com/torvalds/linux/blob/v4.16/arch/x86/boot/header.S)을 기억해보십시오.
 
 ```assembly
 die:
