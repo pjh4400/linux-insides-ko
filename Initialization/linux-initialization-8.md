@@ -148,15 +148,15 @@ local_node 72452442
 other_node 0
 ```
 
-모든 `node`는 리눅스 커널에서 `struct pglist_data`로 표시됩니다. 각 노드는 '구역'(`zones`)이라고 불리는 여러 개의 특수한 블록으로 나뉩니다. 모든 구역은 리눅스 커널에서`zone struct`로 표시되며 다음 유형들 중 하나입니다.
+모든 `node`는 리눅스 커널에서 `struct pglist_data`로 표시됩니다. 각 노드는 '구역'(`zones`)이라고 불리는 여러 개의 특수한 블록으로 나뉩니다. 모든 구역은 리눅스 커널에서`zone struct`로 표시되며 다음 중 하나의 유형입니다.
 
 * `ZONE_DMA` - 0-16M;
-* `ZONE_DMA32` - used for 32 bit devices that can only do DMA areas below 4G;
-* `ZONE_NORMAL` - all RAM from the 4GB on the `x86_64`;
-* `ZONE_HIGHMEM` - absent on the `x86_64`;
-* `ZONE_MOVABLE` - zone which contains movable pages.
+* `ZONE_DMA32` - 4G 미만의 영역(area)만  DMA를 수행 할 수있는 32 비트 장치에 사용됨;
+* `ZONE_NORMAL` - `x86_64`에서 4GB부터의 모든 RAM;
+* `ZONE_HIGHMEM` - `x86_64`에서 존재하지 않음;
+* `ZONE_MOVABLE` - 움직일 수 있는(moveable) 페이지를 포함하는 zone.
 
-which are presented by the `zone_type` enum. We can get information about zones with the:
+이것들은 `zone_type` 열거형으로 표시됩니다. 다음을 통해 zone에 대한 정보를 얻을 수 있습니다.
 
 ```
 $ cat /proc/zoneinfo
@@ -180,12 +180,12 @@ Node 0, zone   Normal
         ...
 ```
 
-As I wrote above all nodes are described with the `pglist_data` or `pg_data_t` structure in memory. This structure is defined in the [include/linux/mmzone.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/mmzone.h). The `build_all_zonelists` function from the [mm/page_alloc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/mm/page_alloc.c) constructs an ordered `zonelist` (of different zones `DMA`, `DMA32`, `NORMAL`, `HIGH_MEMORY`, `MOVABLE`) which specifies the zones/nodes to visit when a selected `zone` or `node` cannot satisfy the allocation request. That's all. More about `NUMA` and multiprocessor systems will be in the special part.
+위에 적힌 것과 같이 모든 노드는 메모리의 `pglist_data` 또는 `pg_data_t` 구조체로 기술됩니다. 이 구조체는 [include / linux / mmzone.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/mmzone.h)에 정의되어 있습니다. [mm/page_alloc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/mm/page_alloc.c)의 `build_all_zonelists` 함수는 정렬된 (각 zone의 `DMA` ,`DMA32`,`NORMAL`,`HIGH_MEMORY`,`MOVABLE`에 대한)`zonelist`를 구성합니다. 이것은 선택된 `zone` 또는 `node`가 할당 요청을 충족시킬 수 없을 때 방문 할 zone/노드를 지정합니다. 이게 전부입니다. `NUMA` 및 멀티프로세서 시스템에 대한 자세한 내용은 특별 파트에 있습니다.
 
-The rest of the stuff before scheduler initialization
+스케줄러 초기화 전의 나머지 것들
 --------------------------------------------------------------------------------
 
-Before we will start to dive into linux kernel scheduler initialization process we must do a couple of things. The first thing is the `page_alloc_init` function from the [mm/page_alloc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/mm/page_alloc.c). This function looks pretty easy:
+리눅스 커널 스케줄러 초기화 프로세스를 시작하기 전에 몇 가지 작업이 필요합니다. 첫 번째는 [mm/page_alloc.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/mm/page_alloc.c)의 `page_alloc_init` 함수입니다  이 함수는 꽤 쉽습니다.
 
 ```C
 void __init page_alloc_init(void)
@@ -199,28 +199,28 @@ void __init page_alloc_init(void)
 }
 ```
 
-It setups setup the `startup` and `teardown` callbacks (second and third parameters) for the `CPUHP_PAGE_ALLOC_DEAD` cpu [hotplug](https://www.kernel.org/doc/Documentation/cpu-hotplug.txt) state. Of course the implementation of this function depends on the `CONFIG_HOTPLUG_CPU` kernel configuration option and if this option is set, such callbacks will be set for all cpu(s) in the system depends on their `hotplug` states. [hotplug](https://www.kernel.org/doc/Documentation/cpu-hotplug.txt) mechanism is a big theme and it will not be described in this book.
+이 함수는 `CPUHP_PAGE_ALLOC_DEAD` cpu [hotplug](https://www.kernel.org/doc/Documentation/cpu-hotplug.txt) 상태에 대한`startup` 및 `teardown` 콜백 (두 번째 및 세 번째 매개 변수)을 설정합니다. 물론 이 함수의 구현은 `CONFIG_HOTPLUG_CPU` 커널 설정 옵션에 따라 달라지며 이 옵션을 설정하면 `hotplug` 상태에 따라 시스템의 모든 CPU에 대해 이러한 콜백이 설정됩니다. [hotplug](https://www.kernel.org/doc/Documentation/cpu-hotplug.txt) 메커니즘은 너무 큰 주제이므로이 책에서는 설명하지 않겠습니다.
 
-After this function we can see the kernel command line in the initialization output:
+이 함수 후에 초기화 출력에서 커널 명령 행을 볼 수 있습니다.
 
 ![kernel command line](http://oi58.tinypic.com/2m7vz10.jpg)
 
-And a couple of functions such as `parse_early_param` and `parse_args` which handles linux kernel command line. You may remember that we already saw the call of the `parse_early_param` function in the sixth [part](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-6.html) of the kernel initialization chapter, so why we call it again? Answer is simple: we call this function in the architecture-specific code (`x86_64` in our case), but not all architecture calls this function. And we need to call the second function `parse_args` to parse and handle non-early command line arguments.
+그리고 리눅스 커널 커맨드 라인을 처리하는 `parse_early_param` 및 `parse_args`와 같은 몇 가지 기능이 있습니다. 우리는 이미 커널 초기화 챕터의 여섯 번째 [파트](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-6.html)에서 `parse_early_param` 함수의 호출을 보았을 것입니다. 그런데 왜 다시 호출할까요? 답은 간단합니다:  (우리의 경우`x86_64`) 특정 아키텍처를 위한 (architecture-specific) 코드에서 이 함수를 호출했어도 모든 아키텍처가 이 함수를 호출하는 것은 아니기 때문입니다. 비-초기(non-early) 명령 줄 인수(argument)들을 분석(parse)하고 처리하려면 두 번째 함수 인 `parse_args`를 호출해야합니다.
 
-In the next step we can see the call of the `jump_label_init` from the [kernel/jump_label.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/jump_label.c). and initializes [jump label](https://lwn.net/Articles/412072/).
+다음 단계에서 [kernel / jump_label.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/jump_label.c) 내의 `jump_label_init`의 호출을 볼 수 있습니다. [jump label](https://lwn.net/Articles/412072/)을 초기화합니다.
 
-After this we can see the call of the `setup_log_buf` function which setups the [printk](http://www.makelinux.net/books/lkd2/ch18lev1sec3) log buffer. We already saw this function in the seventh [part](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-7.html) of the linux kernel initialization process chapter.
+그 후에 우리는 [printk](http://www.makelinux.net/books/lkd2/ch18lev1sec3) 로그 버퍼를 설정하는`setup_log_buf` 함수의 호출을 볼 수 있습니다. 우리는 이미 이 함수를 리눅스 커널 초기화 프로세스 챕터의 일곱 번째 [파트](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-7.html)에서 보았습니다.
 
-PID hash initialization
+PID 해시 초기화
 --------------------------------------------------------------------------------
 
-The next is `pidhash_init` function. As you know each process has assigned a unique number which called - `process identification number` or `PID`. Each process generated with fork or clone is automatically assigned a new unique `PID` value by the kernel. The management of `PIDs` centered around the two special data structures: `struct pid` and `struct upid`. First structure represents information about a `PID` in the kernel. The second structure represents the information that is visible in a specific namespace. All `PID` instances stored in the special hash table:
+다음은`pidhash_init` 함수입니다. 아시다시피 각 프로세스에는 '프로세스 식별 번호'(`process identification number`) 또는 `PID`라고 불리는 고유 번호가 할당되어 있습니다. 포크 또는 클론으로 생성 된 각 프로세스에는 커널에 의해 새로운 고유  `PID`값이 자동으로 할당됩니다. `PID`의 관리는 `struct pid`와`struct upid`라는 두 가지의 특별한 자료구조를 중심으로 이루집니다. 첫 번째 자료구조는 커널의 `PID`에 대한 정보를 나타냅니다. 두 번째 자료구조는 특정 네임 스페이스에서 볼 수있는 정보를 나타냅니다. 특수 해시 테이블에 저장된 모든`PID` 인스턴스는:
 
 ```C
 static struct hlist_head *pid_hash;
 ```
 
-This hash table is used to find the pid instance that belongs to a numeric `PID` value. So, `pidhash_init` initializes this hash table. In the start of the `pidhash_init` function we can see the call of the `alloc_large_system_hash`:
+이 해시 테이블은 `PID` 숫자값에 해당하는 pid 인스턴스를 찾는 데 사용됩니다. 따라서 `pidhash_init`는이 해시 테이블을 초기화합니다. `pidhash_init` 함수의 시작에서 우리는`alloc_large_system_hash`의 호출을 볼 수 있습니다 :
 
 ```C
 pid_hash = alloc_large_system_hash("PID", sizeof(*pid_hash), 0, 18,
@@ -229,10 +229,9 @@ pid_hash = alloc_large_system_hash("PID", sizeof(*pid_hash), 0, 18,
                                    0, 4096);
 ```
 
-The number of elements of the `pid_hash` depends on the `RAM` configuration, but it can be between `2^4` and `2^12`. The `pidhash_init` computes the size
-and allocates the required storage (which is `hlist` in our case - the same as [doubly linked list](https://0xax.gitbooks.io/linux-insides/content/DataStructures/linux-datastructures-1.html), but contains one pointer instead on the [struct hlist_head](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/types.h)]. The `alloc_large_system_hash` function allocates a large system hash table with `memblock_virt_alloc_nopanic` if we pass `HASH_EARLY` flag (as it in our case) or with `__vmalloc` if we did no pass this flag.
+`pid_hash`의 요소 수는`RAM` 구성에 따라 다르지만`2 ^ 4`와`2 ^ 12` 사이입니다. `pidhash_init`는 크기를 계산하고 필요한 저장공간(이 경우`hlist`임 - [doubly linked list](https://0xax.gitbooks.io/linux-insides/content/DataStructures/linux-datastructures-1.html)와 동일함)을 할당하지만 대신 [struct hlist_head](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/types.h)에 포인터를 하나 포함합니다. `alloc_large_system_hash` 함수는 만약 우리가 `HASH_EARLY` 플래그를 전달한다면  `meakblock_virt_alloc_nopanic`와 함께 큰 시스템 해시 테이블(large system hash table)을 할당하고, 플래그를 전달하지 않으면 `__vmalloc`과 함께 할당합니다.
 
-The result we can see in the `dmesg` output:
+그 결과는`dmesg` 출력에서 확인할 수 있습니다 :
 
 ```
 $ dmesg | grep hash
