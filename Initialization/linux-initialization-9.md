@@ -1,16 +1,14 @@
-Kernel initialization. Part 9.
+커널 초기화. Part 9.
 ================================================================================
 
-RCU initialization
+RCU 초기화
 ================================================================================
 
-This is ninth part of the [Linux Kernel initialization process](https://0xax.gitbooks.io/linux-insides/content/Initialization/index.html) and in the previous part we stopped at the [scheduler initialization](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-8.html). In this part we will continue to dive to the linux kernel initialization process and the main purpose of this part will be to learn about initialization of the [RCU](http://en.wikipedia.org/wiki/Read-copy-update). We can see that the next step in the [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c) after the `sched_init` is the call of the `preempt_disable`. There are two macros:
-
+이것은 [리눅스 커널 초기화 프로세스](https://0xax.gitbooks.io/linux-insides/content/Initialization/index.html)의 아홉번째 파트입니다. 또한 이전파트에서 우리는 [스케줄러 초기화](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-8.html)에서 멈췄습니다. 이 부분에서 우리는 리눅스 커널 초기화 과정을 계속해서 진행할 것이며이 부분의 주요 목적은 [RCU](http://en.wikipedia.org/wiki/Read-copy-update)의 초기화에 대해 배우는 것입니다. ).. `sched_init` 이후의 [init / main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c) 의 다음 단계는 `preempt_enable`, ` preempt_disable`. 두 가지 매크로가 있습니다.
 * `preempt_disable`
 * `preempt_enable`
 
-for preemption disabling and enabling. First of all let's try to understand what is `preempt` in the context of an operating system kernel. In simple words, preemption is ability of the operating system kernel to preempt current task to run task with higher priority. Here we need to disable preemption because we will have only one `init` process for the early boot time and we don't need to stop it before we call `cpu_idle` function. The `preempt_disable` macro is defined in the [include/linux/preempt.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/preempt.h) and depends on the `CONFIG_PREEMPT_COUNT` kernel configuration option. This macro is implemented as:
-
+선점 비활성화 및 활성화. 우선 운영 체제 커널의 맥락에서 '선점'이 무엇인지 이해하려고 노력하십시오. 간단히 말해서, 선점은 운영 체제 커널이 현재 작업을 선점하여 우선 순위가 높은 작업을 실행하는 능력입니다. 여기서 우리는 초기 부팅 시간 동안 단 하나의`init` 프로세스 만 가질 것이고 prection을 비활성화 할 필요가 있으며,`cpu_idle` 함수를 호출하기 전에 중지 할 필요가 없습니다. `preempt_disable` 매크로는 [include / linux / preempt.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/preempt.h)에 정의되어 있으며`CONFIG_PREEMPT_COUNT`에 따라 다릅니다 커널 구성 옵션. 이 매크로는 다음과 같이 구현됩니다.
 ```C
 #define preempt_disable() \
 do { \
@@ -19,19 +17,19 @@ do { \
 } while (0)
 ```
 
-and if `CONFIG_PREEMPT_COUNT` is not set just:
+`CONFIG_PREEMPT_COUNT`가 설정되지 않은 경우 :
 
 ```C
 #define preempt_disable()                       barrier()
 ```
 
-Let's look on it. First of all we can see one difference between these macro implementations. The `preempt_disable` with `CONFIG_PREEMPT_COUNT` set contains the call of the `preempt_count_inc`. There is special `percpu` variable which stores the number of held locks and `preempt_disable` calls:
+살펴 봅시다. 우선 우리는 이러한 매크로 구현들 사이의 한 가지 차이점을 볼 수 있습니다. `CONFIG_PREEMPT_COUNT`가 설정된`preempt_disable`에는`preempt_count_inc`의 호출이 포함됩니다. 보류 된 잠금 수와`preempt_disable` 호출을 저장하는 특수한 percpu 변수가 있습니다.
 
 ```C
 DECLARE_PER_CPU(int, __preempt_count);
 ```
 
-In the first implementation of the `preempt_disable` we increment this `__preempt_count`. There is API for returning value of the `__preempt_count`, it is the `preempt_count` function. As we called `preempt_disable`, first of all we increment preemption counter with the `preempt_count_inc` macro which expands to the:
+`preempt_disable`의 첫 번째 구현에서이`__preempt_count`를 증가시킵니다. `__preempt_count`의 값을 반환하는 API가 있으며,`preempt_count` 함수입니다. 우리가`preempt_disable`을 불렀을 때, 우선 우리는 preempt_count_inc 매크로를 사용하여 선점 카운터를 증가시킵니다 :
 
 ```
 #define preempt_count_inc() preempt_count_add(1)
