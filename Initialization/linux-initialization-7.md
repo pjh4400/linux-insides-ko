@@ -1,11 +1,11 @@
 커널 초기화. Part 7.
 ================================================================================
 
-아키텍쳐 별 초기화의 끝, 대부분...
+아키텍쳐 별 초기화의 끝, 거의...
 ================================================================================
 
 
-이것은 Linux Kernel 초기화 프로세스의 일곱 번째 파트로 [arch/x86/kernel/setup.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/setup.c#L861)의 `setup_arch` 함수 내부를 다룹니다. 이전 [파트들](https://junsoolee.gitbook.io/linux-insides-ko/summary/initialization)에서 보았듯이, `setup_arch` 함수는 커널 코드/데이터/bss를위한 메모리 예약, [Desktop Management Interface](http://en.wikipedia.org/wiki/Desktop_Management_Interface), early dump of the [PCI](http://en.wikipedia.org/wiki/PCI) 의 초기 스캐닝, [PCI]의 덤프 초기화와 같은 많은 아키텍쳐 별(우리의 경우 [x86_64]) 초기화 과정을 수행합니다. 이전 [파트]https://junsoolee.gitbook.io/linux-insides-ko/summary/initialization/linux-initialization-6를 읽었다면, 우리가 `setup_real_mode` 함수에서 끝났다는 것을 기억하실 것입니다. 다음 단계에서 [memblock](https://junsoolee.gitbook.io/linux-insides-ko/summary/mm/linux-mm-1)의 제한을 모든 매핑 된 페이지로 설정하면 [kernel/printk/printk.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/printk/printk.c)에서 `setup_log_buf` 함수의 호출을 볼 수 있습니다.
+이것은 Linux Kernel 초기화 프로세스의 일곱 번째 파트로 [arch/x86/kernel/setup.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/setup.c#L861)의 `setup_arch` 함수 내부를 다룹니다. 이전 [파트들](https://junsoolee.gitbook.io/linux-insides-ko/summary/initialization)에서 보았듯이, `setup_arch` 함수는 커널 코드/데이터/bss를위한 메모리 예약, [Desktop Management Interface](http://en.wikipedia.org/wiki/Desktop_Management_Interface), early dump of the [PCI](http://en.wikipedia.org/wiki/PCI) 의 초기 스캐닝, PCI의 덤프 초기화와 같은 많은 아키텍쳐 별(우리의 경우 [x86_64]) 초기화 과정을 수행합니다. 이전 [파트](https://junsoolee.gitbook.io/linux-insides-ko/summary/initialization/linux-initialization-6)를 읽었다면, 우리가 `setup_real_mode` 함수에서 끝났다는 것을 기억하실 것입니다. 다음 단계에서 [memblock](https://junsoolee.gitbook.io/linux-insides-ko/summary/mm/linux-mm-1)의 제한을 모든 매핑 된 페이지로 설정하면 [kernel/printk/printk.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/printk/printk.c)에서 `setup_log_buf` 함수의 호출을 볼 수 있습니다.
 
 `setup_log_buf` 함수는 커널 순환 버퍼를 설정하고, 그 길이는 `CONFIG_LOG_BUF_SHIFT` 구성 옵션에 따라 다릅니다. `CONFIG_LOG_BUF_SHIFT`의 문서에서 읽을 수 있듯이 `12` 와 `21`사이에 있을 것입니다. 내부에서 버퍼는 char형 배열로 정의됩니다. :
 
