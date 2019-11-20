@@ -578,9 +578,9 @@ INIT_PER_CPU(gdt_page);
 #define MSR_GS_BASE             0xc0000101
 ```
 
-We need to put `MSR_GS_BASE` to the `ecx` register and load data from the `eax` and `edx` (which point to the `initial_gs`) with `wrmsr` instruction. We don't use `cs`, `fs`, `ds` and `ss` segment registers for addressing in the 64-bit mode, but `fs` and `gs` registers can be used. `fs` and `gs` have a hidden part (as we saw it in the real mode for `cs`) and this part contains a descriptor which is mapped to [Model Specific Registers](https://en.wikipedia.org/wiki/Model-specific_register). So we can see above `0xc0000101` is a `gs.base` MSR address. When a [system call](https://en.wikipedia.org/wiki/System_call) or [interrupt](https://en.wikipedia.org/wiki/Interrupt) occurs, there is no kernel stack at the entry point, so the value of the `MSR_GS_BASE` will store address of the interrupt stack.
+`MSR_GS_BASE`를 `ecx` 레지스터에 넣고 `wrmsr` 명령으로 `eax` 및 `edx`(`initial_gs`를 가리킴)에서 데이터를 로드해야합니다. 64 비트 모드 주소 지정에서 `cs`, `fs`, `ds` 및 `ss` 세그먼트 레지스터를 사용하지 않지만 `fs` 및 `gs` 레지스터를 사용할 수 있습니다. `fs`와 `gs`는 숨겨진 부분이 있고 (`cs`의 실제 모드에서 본 것처럼) 이 부분에는 [Model Specific Registers](https://en.wikipedia.org/wiki/Model-specific_register)에 매핑 된 설명자가 들어 있습니다. 위의 `0xc0000101`은 `gs.base` MSR 주소입니다. [시스템 호출](https://en.wikipedia.org/wiki/System_call) 또는 [인터럽트](https://en.wikipedia.org/wiki/Interrupt)가 발생하면 진입점에 커널 스택이 없습니다. 따라서 MSR_GS_BASE의 값은 인터럽트 스택의 주소를 저장합니다.
 
-In the next step we put the address of the real mode bootparam structure to the `rdi` (remember `rsi` holds pointer to this structure from the start) and jump to the C code with:
+다음 단계에서 우리는 리얼 모드 bootparam 구조체의 주소를 `rdi`에 넣고 (`rsi`는 처음부터 이 구조에 대한 포인터를 가지고 있음을 기억하세요) 다음과 같이 C 코드로 점프합니다:
 
 ```assembly
 	pushq	$.Lafter_lret	# put return address on stack for unwinder
@@ -592,7 +592,7 @@ In the next step we put the address of the real mode bootparam structure to the 
 .Lafter_lret:
 ```
 
-Here we put the address of the `initial_code` to the `rax` and push the return address, `__KERNEL_CS` and the address of the `initial_code` to the stack. After this we can see `lretq` instruction which means that after it return address will be extracted from stack (now there is address of the `initial_code`) and jump there. `initial_code` is defined in the same source code file and looks:
+여기서 우리는 `initial_code`의 주소를 `rax`에 넣고 리턴 주소 `__KERNEL_CS`와 `initial_code`의 주소를 스택에 푸시합니다. 이 후 우리는 `lretq` 명령을 볼 수 있는데, 이는 반환 주소가 스택에서 추출되고(이제 `initial_code`의 주소가 있음) 그곳으로 점프함을 의미합니다. `initial_code`는 동일한 소스 코드 파일에 정의되어 있으며 다음과 같습니다:
 
 ```assembly
 	.balign	8
@@ -603,7 +603,7 @@ Here we put the address of the `initial_code` to the `rax` and push the return a
 	...
 ```
 
-As we can see `initial_code` contains address of the `x86_64_start_kernel`, which is defined in the [arch/x86/kerne/head64.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head64.c) and looks like this:
+보시다시피 `initial_code`는 [arch/x86/kerne/head64.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head64.c)에 정의 되어있는 `x86_64_start_kernel`주소를 포함합니다. 다음과 같습니다:
 
 ```C
 asmlinkage __visible void __init x86_64_start_kernel(char * real_mode_data)
@@ -614,14 +614,14 @@ asmlinkage __visible void __init x86_64_start_kernel(char * real_mode_data)
 }
 ```
 
-It has one argument is a `real_mode_data` (remember that we passed address of the real mode data to the `rdi` register previously).
+여기에는 하나의 전달인자인 `real_mode_data`가 있습니다.(전에 리얼 모드 데이터의 주소를 `rdi` 레지스터에 전달했음을 기억하세요).
 
-Next to start_kernel
+start_kernel
 --------------------------------------------------------------------------------
 
-We need to see last preparations before we can see "kernel entry point" - start_kernel function from the [init/main.c](https://github.com/torvalds/linux/blob/master/init/main.c).
+"커널 진입점"-[init/main.c](https://github.com/torvalds/linux/blob/master/init/main.c)에서 start_kernel 함수를 보기 전 마지막 준비를 해야합니다.
 
-First of all we can see some checks in the `x86_64_start_kernel` function:
+우선 우리는 `x86_64_start_kernel` 함수에서 몇 가지 확인를 할 수 있습니다:
 
 ```C
 BUILD_BUG_ON(MODULES_VADDR < __START_KERNEL_map);
@@ -634,20 +634,20 @@ MAYBE_BUILD_BUG_ON(!(((MODULES_END - 1) & PGDIR_MASK) == (__START_KERNEL & PGDIR
 BUILD_BUG_ON(__fix_to_virt(__end_of_fixed_addresses) <= MODULES_END);
 ```
 
-There are checks for different things like virtual address of module space is not fewer than base address of the kernel text - `__STAT_KERNEL_map`, that kernel text with modules is not less than image of the kernel and etc... `BUILD_BUG_ON` is a macro which looks as:
+모듈 공간의 가상 주소가 커널 텍스트의 기본 주소보다 작지 않은 `__STAT_KERNEL_map`과 같은 다른 것들에 대한 검사가 있습니다, 모듈이 있는 커널 텍스트는 커널 이미지보다 작지 않습니다. `BUILD_BUG_ON`은 다음과 같은 매크로:
 
 ```C
 #define BUILD_BUG_ON(condition) ((void)sizeof(char[1 - 2*!!(condition)]))
 ```
 
-Let's try to understand how this trick works. Let's take for example first condition: `MODULES_VADDR < __START_KERNEL_map`. `!!conditions` is the same that `condition != 0`. So it means if `MODULES_VADDR < __START_KERNEL_map` is true, we will get `1` in the `!!(condition)` or zero if not. After `2*!!(condition)` we will get or `2` or `0`. In the end of calculations we can get two different behaviors:
+이 트릭이 어떻게 작동하는지 이해해 봅시다. 첫 번째 조건 인 `MODULES_VADDR <__START_KERNEL_map`을 예로 들어 보겠습니다. `!! conditions`는 `condition! = 0`과 같습니다. 따라서 `MODULES_VADDR <__START_KERNEL_map`이 true이면 `!! (condition)`에서 `1`을 얻거나 그렇지 않으면 0을 얻습니다. `2 * !! (조건)`후에 우리는 `2`또는 `0`을 얻습니다. 계산이 끝나면 두 가지 다른 동작을 얻을 수 있습니다.
 
-* We will have compilation error, because try to get size of the char array with negative index (as can be in our case, because `MODULES_VADDR` can't be less than `__START_KERNEL_map` will be in our case);
-* No compilation errors.
+* 음수 인덱스를 가진 char 배열의 크기를 얻으려고 시도하기 때문에 컴파일 오류가 발생합니다(`MODULES_VADDR`이 `__START_KERNEL_map`보다 작을 수 없기 때문에 우리의 경우처럼);
+* 컴파일 오류가 없습니다.
 
-That's all. So interesting C trick for getting compile error which depends on some constants.
+그게 다입니다. 일부 상수에 따라 컴파일 오류가 발생하는 흥미로운 C 트릭입니다.
 
-In the next step we can see call of the `cr4_init_shadow` function which stores shadow copy of the `cr4` per cpu. Context switches can change bits in the `cr4` so we need to store `cr4` for each CPU. And after this we can see call of the `reset_early_page_tables` function where we resets all page global directory entries and write new pointer to the PGT in `cr3`:
+다음 단계에서는 CPU 당 `cr4`의 쉐도우 복사본을 저장하는 `cr4_init_shadow` 함수의 호출을 볼 수 있습니다. 컨텍스트 스위치는 `cr4`의 비트를 변경할 수 있으므로 각 CPU마다 `cr4`를 저장해야합니다. 그리고 나서 모든 페이지 글로벌 디렉토리 엔트리를 재설정하고 `cr3`에서 PGT에 대한 새로운 포인터를 작성하는 `reset_early_page_tables` 함수의 호출을 볼 수 있습니다.
 
 ```C
 	memset(early_top_pgt, 0, sizeof(pgd_t)*(PTRS_PER_PGD-1));
@@ -655,9 +655,9 @@ In the next step we can see call of the `cr4_init_shadow` function which stores 
 	write_cr3(__sme_pa_nodebug(early_top_pgt));
 ```
 
-Soon we will build new page tables. Here we can see that we zero all Page Global Directory entries. After this we set `next_early_pgt` to zero (we will see details about it in the next post) and write physical address of the `early_top_pgt` to the `cr3`.
+곧 새로운 페이지 테이블을 만들 것입니다. 여기서 모든 페이지 글로벌 디렉토리 항목이 0임을 알 수 있습니다. 그런 다음 `next_early_pgt`를 0으로 설정하고(다음 포스트에서 이에 대한 세부 사항을 볼 것입니다) `early_top_pgt`의 물리적 주소를 `cr3`에 씁니다.
 
-After this we clear `_bss` from the `__bss_stop` to `__bss_start` and also clear `init_top_pgt`. `init_top_pgt` is defined in the [arch/x86/kerne/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S) like the following:
+그런 다음 `_bss`를 `__bss_stop`에서 `__bss_start`로 지우고 `init_top_pgt`도 지웁니다. `init_top_pgt`는 다음과 같이 [arch/x86/kerne/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S)에 정의되어 있습니다:
 
 ```assembly
 NEXT_PGD_PAGE(init_top_pgt)
@@ -665,22 +665,22 @@ NEXT_PGD_PAGE(init_top_pgt)
 	.fill	PTI_USER_PGD_FILL,8,0
 ```
 
-This is exactly the same definition as `early_top_pgt`.
+이것은 `early_top_pgt`와 정확히 같은 정의입니다.
 
-The next step will be setup of the early `IDT` handlers, but it's big concept so we will see it in the next post.
+다음 단계는 초기 `IDT`핸들러의 설정이지만, 큰 개념이므로 다음 장에서 볼 것이다.
 
-Conclusion
+결론
 --------------------------------------------------------------------------------
 
-This is the end of the first part about linux kernel initialization.
+이것이 리눅스 커널 초기화에 대한 첫 번째 부분입니다.
 
-If you have questions or suggestions, feel free to ping me in twitter [0xAX](https://twitter.com/0xAX), drop me [email](anotherworldofworld@gmail.com) or just create [issue](https://github.com/0xAX/linux-insides/issues/new).
+이것이 리눅스 커널 부팅 과정의 네 번째 부분입니다. 질문이나 제안이 있으면 트위터 [0xAX](https://twitter.com/0xAX)나 [email](anotherworldofworld@gmail.com)을 보내거나 [issue](https://github.com/0xAX/linux-insides/issues/new)를 만드십시오.
 
-In the next part we will see initialization of the early interruption handlers, kernel space memory mapping and a lot more.
+다음 부분에서는 초기 인터럽트 처리기, 커널 공간 메모리 매핑 등의 초기화를 볼 수 있습니다.
 
-**Please note that English is not my first language and I am really sorry for any inconvenience. If you found any mistakes please send me PR to [linux-insides](https://github.com/0xAX/linux-insides).**
+**모국어가 영어가 아니면 죄송합니다. 실수를 발견하면 PR을 [linux-insides](https://github.com/0xAX/linux-internals)로 보내주십시오.**
 
-Links
+링크
 --------------------------------------------------------------------------------
 
 * [Model Specific Register](http://en.wikipedia.org/wiki/Model-specific_register)
