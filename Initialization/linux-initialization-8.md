@@ -1,14 +1,14 @@
-Kernel initialization. Part 8.
+커널 초기화. Part 8.
 ================================================================================
 
-Scheduler initialization
+스케쥴러 초기화
 ================================================================================
 
-This is the eighth [part](https://0xax.gitbooks.io/linux-insides/content/Initialization/index.html) of the Linux kernel initialization process chapter and we stopped on the `setup_nr_cpu_ids` function in the [previous part](https://github.com/0xAX/linux-insides/blob/master/Initialization/linux-initialization-7.md).
+이것은 Linux 커널 초기화 프로세스 장의 여덟 번째 [파트](https://0xax.gitbooks.io/linux-insides/content/Initialization/index.html)이며 [이전 파트](https://github.com/0xAX/linux-insides/blob/master/Initialization/linux-initialization-7.md)에선 `setup_nr_cpu_ids` 함수에서 멈췄었습니다. 
 
-The main point of this part is [scheduler](http://en.wikipedia.org/wiki/Scheduling_%28computing%29) initialization. But before we will start to learn initialization process of the scheduler, we need to do some stuff. The next step in the [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c) is the `setup_per_cpu_areas` function. This function setups memory areas for the `percpu` variables, more about it you can read in the special part about the [Per-CPU variables](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html). After `percpu` areas is up and running, the next step is the `smp_prepare_boot_cpu` function.
+이번 파트의 주요 요점은 [스케쥴러](http://en.wikipedia.org/wiki/Scheduling_%28computing%29) 초기화입니다. 그러나 스케줄러의 초기화 프로세스를 배우기 전에 몇 가지가 필요합니다. [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c)에서 다음 단계는`setup_per_cpu_areas` 함수입니다. 이 함수는 `percpu` 변수를 위한 메모리 구역을 설정합니다. 자세한 내용은 특별히 [Per-CPU variables](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html)에 대한 파트에서 읽을 수 있습니다. `percpu` 영역이 가동되어 실행되기 시작하면 다음 단계는`smp_prepare_boot_cpu` 함수입니다.
 
-This function does some preparations for [symmetric multiprocessing](http://en.wikipedia.org/wiki/Symmetric_multiprocessing). Since this function is architecture specific, it is located in the [arch/x86/include/asm/smp.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/include/asm/smp.h#L78) Linux kernel header file. Let's look at the definition of this function:
+이 함수는 [symmetric multiprocessing](http://en.wikipedia.org/wiki/Symmetric_multiprocessing)을 위한 몇가지 준비를합니다. 이 함수는 각 아키텍처에 따라 맞춰져있으므로, [arch/x86/include/asm/smp.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/include/asm/smp.h#L78) Linux 커널 헤더 파일에 있습니다. 이 함수의 정의를 살펴봅시다 :
 
 ```C
 static inline void smp_prepare_boot_cpu(void)
@@ -17,7 +17,7 @@ static inline void smp_prepare_boot_cpu(void)
 }
 ```
 
-We may see here that it just calls the `smp_prepare_boot_cpu` callback of the `smp_ops` structure. If we look at the definition of instance of this structure from the [arch/x86/kernel/smp.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/smp.c) source code file, we will see that the `smp_prepare_boot_cpu` expands to the call of the `native_smp_prepare_boot_cpu` function:
+여기서는`smp_ops` 구조체의`smp_prepare_boot_cpu` 콜백을 호출하는 것을 볼 수 있습니다. [arch/x86/kernel/smp.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/smp.c) 소스 코드 파일에서 이 구조체의 인스턴스의 정의를 보면 `smp_prepare_boot_cpu`가 `native_smp_prepare_boot_cpu` 함수의 호출로 확장됨을 알 수 있습니다.
 
 ```C
 struct smp_ops smp_ops = {
@@ -32,7 +32,7 @@ struct smp_ops smp_ops = {
 EXPORT_SYMBOL_GPL(smp_ops);
 ```
 
-The `native_smp_prepare_boot_cpu` function looks:
+`native_smp_prepare_boot_cpu` 함수의 생김새는 다음과 같습니다:
 
 ```C
 void __init native_smp_prepare_boot_cpu(void)
@@ -44,7 +44,7 @@ void __init native_smp_prepare_boot_cpu(void)
 }
 ```
 
-and executes following things: first of all it gets the `id` of the current CPU (which is Bootstrap processor and its `id` is zero for this moment) with the `smp_processor_id` function. I will not explain how the `smp_processor_id` works, because we already saw it in the [Kernel entry point](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-4.html) part. After we've got processor `id` number we reload [Global Descriptor Table](http://en.wikipedia.org/wiki/Global_Descriptor_Table) for the given CPU with the `switch_to_new_gdt` function:
+그리고 이 함수는 다음과 같은 것들을 실행합니다 : 우선`smp_processor_id` 함수를 사용하여 현재 CPU의 `id` (부트스트랩 프로세서이고 이 순간에 `id`는 0) 를 얻습니다. 이미 [Kernel entry point](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-4.html)파트에서 보았기 때문에 `smp_processor_id`가 어떻게 작동하는지는 설명하지 않겠습니다. 프로세서`id` 번호를 얻은 후에는 `switch_to_new_gdt` 함수를 사용하여 주어진 CPU에 대해 [Global Descriptor Table](http://en.wikipedia.org/wiki/Global_Descriptor_Table)을 다시 로드합니다 :
 
 ```C
 void switch_to_new_gdt(int cpu)
@@ -58,13 +58,13 @@ void switch_to_new_gdt(int cpu)
 }
 ```
 
-The `gdt_descr` variable represents pointer to the `GDT` descriptor here (we already saw definition of a `desc_ptr` structure in the [Early interrupt and exception handling](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-2.html) part). We get the address and the size of the `GDT` descriptor for the `CPU` with the given `id`. The `GDT_SIZE` is `256` or:
+`gdt_descr` 변수는 여기서 `GDT` 디스크립터에 대한 포인터를 나타냅니다 (이미 [Early interrupt and exception handling](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-2.html) 부분에서`desc_ptr` 구조체의 정의를 보았습니다). 우리는 주어진`id`를 가진 `CPU`에 대한 `GDT` 디스크립터의 주소와 크기를 얻습니다. `GDT_SIZE`는`256`이거나:
 
 ```C
 #define GDT_SIZE (GDT_ENTRIES * 8)
 ```
 
-and the address of the descriptor we will get with the `get_cpu_gdt_table`:
+이며, `get_cpu_gdt_table`을 통해 얻을 수있는 서술자의 주소는 :
 
 ```C
 static inline struct desc_struct *get_cpu_gdt_table(unsigned int cpu)
@@ -73,9 +73,9 @@ static inline struct desc_struct *get_cpu_gdt_table(unsigned int cpu)
 }
 ```
 
-The `get_cpu_gdt_table` uses `per_cpu` macro for getting value of a `gdt_page` percpu variable for the given CPU number (bootstrap processor with `id` - 0 in our case).
+`get_cpu_gdt_table`은 주어진 CPU 번호에 대한 `gdt_page` percpu 변수의 값을 얻기 위해 `per_cpu` 매크로를 사용합니다. (이 경우에는 `id` -0 인 부트스트랩 프로세서)
 
-You may ask the following question: so, if we can access `gdt_page` percpu variable, where it was defined? Actually we already saw it in this book. If you have read the first [part](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-1.html) of this chapter, you can remember that we saw definition of the `gdt_page` in the [arch/x86/kernel/head_64.S](https://github.com/0xAX/linux/blob/0a07b238e5f488b459b6113a62e06b6aab017f71/arch/x86/kernel/head_64.S):
+다음과 같은 의문이 생길 수도 있습니다: 그래서 만약 우리가`gdt_page` percpu 변수에 접근 할 수 있다면, 어디에 정의되어 있나요? 사실 우리는 이미 이 책에서 그것을 보았습니다. 이 장의 첫 번째 [파트](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-1.html)를 읽었다면 [arch/x86/kernel/head_64.S](https://github.com/0xAX/linux/blob/0a07b238e5f488b459b6113a62e06b6aab017f71/arch/x86/kernel/head_64.S)에서 `gdt_page`의 정의를 보았던 것을 기억할 것입니다 :
 
 ```assembly
 early_gdt_descr:
@@ -84,14 +84,14 @@ early_gdt_descr_base:
 	.quad	INIT_PER_CPU_VAR(gdt_page)
 ```
 
-and if we will look on the [linker](https://github.com/0xAX/linux/blob/0a07b238e5f488b459b6113a62e06b6aab017f71/arch/x86/kernel/vmlinux.lds.S) file we can see that it locates after the `__per_cpu_load` symbol:
+또한 [링커](https://github.com/0xAX/linux/blob/0a07b238e5f488b459b6113a62e06b6aab017f71/arch/x86/kernel/vmlinux.lds.S) 파일을 살펴보면`__per_cpu_load `기호다음에 위치한 것을 볼 수 있습니다 :
 
 ```C
 #define INIT_PER_CPU(x) init_per_cpu__##x = x + __per_cpu_load
 INIT_PER_CPU(gdt_page);
 ```
 
-and filled `gdt_page` in the [arch/x86/kernel/cpu/common.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/cpu/common.c#L94):
+[arch/x86/kernel/cpu/common.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/cpu/common.c#L94)에서`gdt_page`를 채웠습니다 :
 
 ```C
 DEFINE_PER_CPU_PAGE_ALIGNED(struct gdt_page, gdt_page) = { .gdt = {
@@ -107,7 +107,7 @@ DEFINE_PER_CPU_PAGE_ALIGNED(struct gdt_page, gdt_page) = { .gdt = {
     ...
 ```
 
-more about `percpu` variables you can read in the [Per-CPU variables](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html) part. As we got address and size of the `GDT` descriptor we reload `GDT` with the `load_gdt` which just execute `lgdt` instruct and load `percpu_segment` with the following function:
+`percpu` 변수에 대한 자세한 내용은 [Per-CPU variables](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html) 파트를 참고해주세요. `GDT` 디스크립터의 주소와 크기를 얻었으므로 `load_gdt`로 `GDT`를 다시 로드합니다. `load_gdt`는 단지 `lgdt` 명령을 실행하고 다음 함수를 사용하여 `percpu_segment`를 로드하는 함수입니다:
 
 ```C
 void load_percpu_segment(int cpu) {
@@ -117,26 +117,26 @@ void load_percpu_segment(int cpu) {
 }
 ```
 
-The base address of the `percpu` area must contain `gs` register (or `fs` register for `x86`), so we are using `loadsegment` macro and pass `gs`. In the next step we writes the base address if the [IRQ](http://en.wikipedia.org/wiki/Interrupt_request_%28PC_architecture%29) stack and setup stack [canary](http://en.wikipedia.org/wiki/Buffer_overflow_protection) (this is only for `x86_32`). After we load new `GDT`, we fill `cpu_callout_mask` bitmap with the current cpu and set cpu state as online with the setting `cpu_state` percpu variable for the current processor - `CPU_ONLINE`:
+`percpu` 영역의 베이스 주소는 `gs`레지스터 (또는 `x86`의 경우 `fs`레지스터)를 포함해야하므로 우리는 `loadsegment` 매크로를 사용하고 `gs`를 전달합니다. 다음 단계에서 [IRQ](http://en.wikipedia.org/wiki/Interrupt_request_%28PC_architecture%29) 스택 및 설정 스택이 [canary](http://en.wikipedia.org/wiki/Buffer_overflow_protection)인 경우 베이스 주소를 작성합니다. (`x86_32`에만 해당) 새로운`GDT`를 로드 한 후에는, 현재 CPU로 `cpu_callout_mask` 비트맵을 채우고 `cpu_state` percpu 변수를 현재 프로세서에 대한 값-`CPU_ONLINE`-으로 설정해 cpu 상태를 온라인으로 설정합니다 :
 
 ```C
 cpumask_set_cpu(me, cpu_callout_mask);
 per_cpu(cpu_state, me) = CPU_ONLINE;
 ```
 
-So, what is `cpu_callout_mask` bitmap... As we initialized bootstrap processor (processor which is booted the first on `x86`) the other processors in a multiprocessor system are known as `secondary processors`. Linux kernel uses following two bitmasks:
+그래서 `cpu_callout_mask`비트 맵은 뭘까요... 부트스트랩 프로세서 (x86에서 첫 번째로 부팅되는 프로세서)를 초기화함에 따라 멀티프로세서 시스템의 다른 프로세서들은 '보조 프로세서'(secondary processors)라고합니다. 리눅스 커널은 다음 두 비트 마스크를 사용합니다.
 
 * `cpu_callout_mask`
 * `cpu_callin_mask`
 
-After bootstrap processor initialized, it updates the `cpu_callout_mask` to indicate which secondary processor can be initialized next. All other or secondary processors can do some initialization stuff before and check the `cpu_callout_mask` on the boostrap processor bit. Only after the bootstrap processor filled the `cpu_callout_mask` with this secondary processor, it will continue the rest of its initialization. After that the certain processor finish its initialization process, the processor sets bit in the `cpu_callin_mask`. Once the bootstrap processor finds the bit in the `cpu_callin_mask` for the current secondary processor, this processor repeats the same procedure for initialization of one of the remaining secondary processors. In a short words it works as i described, but we will see more details in the chapter about `SMP`.
+부트 스트랩 프로세서가 초기화되면 커널은 `cpu_callout_mask`를 업데이트하여 다음으로 초기화 할 수 있는 보조 프로세서를 나타냅니다. All other or secondary processors can do some initialization stuff before and check the `cpu_callout_mask` on the boostrap processor bit. 다른 모든 프로세서나 몇개의 보조 프로세서들도 초기화 작업을 수행한 후 `cpu_callout_mask`의 부트스트랩 프로세서 비트를 체크할 수 있습니다. 부트스트랩 프로세서가 이 보조 프로세서로 `cpu_callout_mask`를 채운 후에만 나머지 초기화가 계속됩니다. 특정 프로세서가 초기화 과정을 마치면 해당 프로세서는`cpu_callin_mask`의 비트를 설정합니다. 부트스트랩 프로세서가 현재 보조 프로세서에 해당하는 비트를 `cpu_callin_mask`에서 찾으면 이 프로세서는 나머지 보조 프로세서 중 하나의 초기화를 위해 동일한 절차를 반복합니다. 간단히 설명하여 여태까지 말한대로 작동하지만 좀더 자세한 내용은 `SMP` 챕터에서  살펴보도록 하겠습니다.
         
-That's all. We did all `SMP` boot preparation.
+이것이 끝입니다. 우리는 `SMP` 부팅 준비를 모두 마쳤습니다.
 
-Build zonelists
+존리스트(zonelist) 구축
 -----------------------------------------------------------------------
 
-In the next step we can see the call of the `build_all_zonelists` function. This function sets up the order of zones that allocations are preferred from. What are zones and what's order we will understand soon. For the start let's see how linux kernel considers physical memory. Physical memory is split into banks which are called - `nodes`. If you has no hardware support for `NUMA`, you will see only one node:
+다음 단계에서는`build_all_zonelists` 함수의 호출을 볼 수 있습니다. 이 함수는 할당이 선호되는대로 구역의 순서를 설정합니다. 구역이란 무엇이며 순서는 무엇인지는 곧 이해하게 될 것입니다. 우선은 리눅스 커널이 물리적 메모리를 어떻게 여기는지 봅시다. 물리적 메모리는 '노드'(`nodes`)라고 불리는 덩어리로 나뉩니다. `NUMA`에 대한 하드웨어 지원이없는 경우 하나의 노드만 보일 것입니다.
 
 ```
 $ cat /sys/devices/system/node/node0/numastat 
@@ -148,7 +148,7 @@ local_node 72452442
 other_node 0
 ```
 
-Every `node` is presented by the `struct pglist_data` in the linux kernel. Each node is divided into a number of special blocks which are called - `zones`. Every zone is presented by the `zone struct` in the linux kernel and has one of the type:
+모든 `node`는 리눅스 커널에서 `struct pglist_data`로 표시됩니다. 각 노드는 '구역'(`zones`)이라고 불리는 여러 개의 특수한 블록으로 나뉩니다. 모든 구역은 리눅스 커널에서`zone struct`로 표시되며 다음 유형들 중 하나입니다.
 
 * `ZONE_DMA` - 0-16M;
 * `ZONE_DMA32` - used for 32 bit devices that can only do DMA areas below 4G;
