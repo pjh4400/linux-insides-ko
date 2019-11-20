@@ -231,12 +231,9 @@ static inline dev_t new_decode_dev(u32 dev)
          return MKDEV(major, minor);
 }
 ```
-계산 후 우리는 `주`번호에 대해 12비트 또는 `0xfff`를 얻을 수 있고, `부` 번호에 대해 20비트 또는 `0xfffff`를 얻을 수 있습니다.
-계산 후 우리는 `0xffffffff`인 경우에 `0xfff` 또는 `주`번호에 대한 12비트를 얻을 것이고, `0xfffff` 또는 `부` 번호에 대한 20비트를 얻을 것입니다.
 
-계산 후 우리는 `0xffffffff`이고 `0xfffff`이거나`minor`의 경우 20 비트이면`0xfff` 또는`major`의 경우 12 비트를 얻게됩니다. 따라서 'old_decode_dev'실행이 끝날 때 루트 디바이스의 주 번호와 부 번호는 'ROOT_DEV'에 표시됩니다.
+계산 후에 우리는 그 결과가 `0xffffffff` 인 경우에는 `0xfff`를, `0xfffff`인 경우에는 `주`번호에 대한 12비트를, 그리고 `부` 번호에 대한 20비트를 얻을 수 있습니다. 따라서 `old_decode_dev`의 실행이 끝날 때 `ROOT_DEV`에서 루트 디바이스의 주 번호와 부 번호를 얻을 수 있습니다.
 
-After calculation we will get `0xfff` or 12 bits for `major` if it is `0xffffffff` and `0xfffff` or 20 bits for `minor`. So in the end of execution of the `old_decode_dev` we will get major and minor numbers for the root device in `ROOT_DEV`.
 
 메모리 맵 설정
 --------------------------------------------------------------------------------
@@ -256,12 +253,12 @@ After calculation we will get `0xfff` or 12 bits for `major` if it is `0xfffffff
 	bootloader_version |= boot_params.hdr.ext_loader_ver << 4;
 ```
 
-All of these parameters we got during boot time and stored in the `boot_params` structure. After this we need to setup the end of the I/O memory. As you know one of the main purposes of the kernel is resource management. And one of the resource is memory. As we already know there are two ways to communicate with devices are I/O ports and device memory. All information about registered resources are available through:
+부팅 시간 동안 얻은 모든 매개 변수는 `boot_params` 구조체에 저장되었습니다. 그런 다음 I/O 메모리의 마지막을 설정해야합니다. 커널의 주요 목적 중 하나는 리소스 관리입니다. 그리고 그 리소스 중 하나는 메모리입니다. 이미 알고 있듯이 장치와 통신하는 두 가지 방법이 I/O 포트와 장치 메모리입니다. 등록 된 리소스에 대한 모든 정보는 다음을 통해 제공됩니다.
 
-* /proc/ioports - provides a list of currently registered port regions used for input or output communication with a device;
-* /proc/iomem   - provides current map of the system's memory for each physical device.
+* /proc/ioports - 장치와의 입력 또는 출력 통신에 사용되는 현재 등록 된 포트 영역 목록을 제공합니다.
+* /proc/iomem - 각 물리적 장치에 대한 시스템 메모리의 현재 맵을 제공합니다.
 
-At the moment we are interested in `/proc/iomem`:
+현재 우리의 관심은 `/proc/iomem`에 있습니다. :
 
 ```
 cat /proc/iomem
@@ -280,7 +277,7 @@ cat /proc/iomem
   000f0000-000fffff : System ROM
 ```
 
-As you can see range of addresses are shown in hexadecimal notation with its owner. Linux kernel provides API for managing any resources in a general way. Global resources (for example PICs or I/O ports) can be divided into subsets - relating to any hardware bus slot. The main structure `resource`:
+보시다시피 주소 범위는 소유자와 16 진수 표기법으로 표시됩니다. Linux 커널은 일반적인 방법으로 모든 리소스를 관리하기위한 API를 제공합니다. 전역 리소스 (예 : PIC 또는 I/O 포트)는 하드웨어 버스 슬롯과 관련된 서브셋들로 나눌 수 있습니다. 주요 구조체 `resource`:
 
 ```C
 struct resource {
@@ -292,7 +289,7 @@ struct resource {
 };
 ```
 
-presents abstraction for a tree-like subset of system resources. This structure provides range of addresses from `start` to `end` (`resource_size_t` is `phys_addr_t` or `u64` for `x86_64`) which a resource covers, `name` of a resource (you see these names in the `/proc/iomem` output) and `flags` of a resource (All resources flags defined in the [include/linux/ioport.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/ioport.h)). The last are three pointers to the `resource` structure. These pointers enable a tree-like structure:
+는 시스템 리소스의 트리와 유사한 서브셋에 대한 추상화를 나타냅니다. 이 구조체는 `start`부터 `end`까지의 리소스가 커버하는 주소 범위, (`resource_size_t`는 `phys_addr_t`, 또는 `x86_64`의 경우에는 u64`). 리소스의 `name`(`/proc/iomem` 출력에서 이 이름들을 볼 수 있습니다.) 및 리소스의 플래그 ([include/linux/ioport.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/ioport.h)에 정의 된 모든 리소스 플래그)를 제공합니다. 마지막은 '리소스' 구조체에 대한 세 가지 포인터입니다. 이 포인터는 트리와 유사한 구조체를 가능하게합니다.
 
 ```
 +-------------+      +-------------+
@@ -309,7 +306,7 @@ presents abstraction for a tree-like subset of system resources. This structure 
 +-------------+
 ```
 
-Every subset of resources has root range resources. For `iomem` it is `iomem_resource` which defined as:
+모든 리소스의 서브셋에는 루트 범위 리소스가 있습니다. `iomem`의 경우, `iomem_resource`는 다음과 같이 정의됩니다. :
 
 ```C
 struct resource iomem_resource = {
@@ -323,15 +320,17 @@ EXPORT_SYMBOL(iomem_resource);
 
 TODO EXPORT_SYMBOL
 
-`iomem_resource` defines root addresses range for io memory with `PCI mem` name and `IORESOURCE_MEM` (`0x00000200`) as flags. As i wrote above our current point is setup the end address of the `iomem`. We will do it with:
+`iomem_resource`는 `PCI mem` 이름과 `IORESOURCE_MEM`(`0x00000200`)을 플래그로하여 io 메모리의 루트 주소 범위를 정의합니다. 위에서 쓴 것처럼 현재 요점은 `iomem`의 끝 주소의 설정입니다. 우리는 다음을 이용하여 설정할 것입니다. :
+
 
 ```C
 iomem_resource.end = (1ULL << boot_cpu_data.x86_phys_bits) - 1;
 ```
 
-Here we shift `1` on `boot_cpu_data.x86_phys_bits`. `boot_cpu_data` is `cpuinfo_x86` structure which we filled during execution of the `early_cpu_init`. As you can understand from the name of the `x86_phys_bits` field, it presents maximum bits amount of the maximum physical address in the system. Note also that `iomem_resource` is passed to the `EXPORT_SYMBOL` macro. This macro exports the given symbol (`iomem_resource` in our case) for dynamic linking or in other words it makes a symbol accessible to dynamically loaded modules.
+여기서 우리는 `boot_cpu_data.x86_phys_bits`를 `1` 쉬프트 합니다. `boot_cpu_data`는 `early_cpu_init`을 실행 하면서 채운 cpuinfo_x86 구조체입니다. 'x86_phys_bits'는 필드의 이름에서 알 수 있듯이 시스템의 최대 물리적 주소의 최대 비트 량을 나타냅니다. `iomem_resource`는 `EXPORT_SYMBOL` 매크로로 전달됩니다. 이 매크로는 주어진 심볼 (이 경우 `iomem_resource`)을 동적 링크를 위해 내보내거나, 다른 말로하면 심볼이 동적으로 로드 된 모듈에 액세스 할 수있게합니다.
 
-After we set the end address of the root `iomem` resource address range, as I wrote above the next step will be setup of the memory map. It will be produced with the call of the `setup_ memory_map` function:
+루트 `iomem` 리소스 주소 범위의 끝 주소를 설정 마친 후, 위에서 작성한 것처럼 다음 단계는 메모리 맵을 설정하는 것입니다. 이는 `setup_ memory_map` 함수를 호출하여 생성됩니다 :
+
 
 ```C
 void __init setup_memory_map(void)
@@ -345,7 +344,9 @@ void __init setup_memory_map(void)
 }
 ```
 
-First of all we call look here the call of the `x86_init.resources.memory_setup`. `x86_init` is a `x86_init_ops` structure which presents platform specific setup functions as resources initialization, pci initialization and etc... initialization of the `x86_init` is in the [arch/x86/kernel/x86_init.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/x86_init.c). I will not give here the full description because it is very long, but only one part which interests us for now:
+
+우선 여기에서 `x86_init.resources.memory_setup`의 호출을 살펴 봅시다. `x86_init`는 플랫폼 초기화 기능을 리소스 초기화, pci 초기화 등으로 나타내는 `x86_init_ops` 구조체입니다.`x86_init`의 초기화는 [arch/x86/kernel/x86_init.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/x86_init.c)에 있습니다. 여기서는 매우 길기 때문에 전체 설명을 하지는 않고, 현재 우리에게 관심이 있는 부분만 살펴보겠습니다. :
+
 
 ```C
 struct x86_init_ops x86_init __initdata = {
@@ -360,7 +361,7 @@ struct x86_init_ops x86_init __initdata = {
 }
 ```
 
-As we can see here `memry_setup` field is `default_machine_specific_memory_setup` where we get the number of the [e820](http://en.wikipedia.org/wiki/E820) entries which we collected in the [boot time](https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-2.html), sanitize the BIOS e820 map and fill `e820map` structure with the memory regions. As all regions are collected, print of all regions with printk. You can find this print if you execute `dmesg` command and you can see something like this:
+여기서 볼 수 있듯이 `memry_setup` 필드는 [부트 시간](https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-2.html)에 수집 한 [e820](http://en.wikipedia.org/wiki/E820) 엔트리의 수를 얻는 `default_machine_specific_memory_setup`이며, BIOS e820 맵을 삭제하고 `e820map` 구조체를 메모리 영역으로 채웁니다. 모든 영역이 수집되면 printk를 사용하여 모든 영역을 출력합니다. `dmesg` 명령을 실행하면 다음과 같은 것을 볼 수 있습니다. :
 
 ```
 [    0.000000] e820: BIOS-provided physical RAM map:
@@ -382,10 +383,12 @@ As we can see here `memry_setup` field is `default_machine_specific_memory_setup
 ...
 ```
 
-Copying of the BIOS Enhanced Disk Device information
+
+BIOS Enhanced Disk Device 정보 복사
 --------------------------------------------------------------------------------
 
-The next two steps is parsing of the `setup_data` with `parse_setup_data` function and copying BIOS EDD to the safe place. `setup_data` is a field from the kernel boot header and as we can read from the `x86` boot protocol:
+
+다음 다룰 두 단계는 `parse_setup_data` 함수를 이용하여 `setup_data`를 분석하고, BIOS EDD를 안전한 곳에 복사하는 것입니다. `setup_data`는 커널 부트 헤더의 필드이며 `x86` 부트 프로토콜에서 읽을 수 있습니다 :
 
 ```
 Field name:	setup_data
@@ -398,7 +401,8 @@ Protocol:	2.09+
   parameters passing mechanism.
 ```
 
-It used for storing setup information for different types as device tree blob, EFI setup data and etc... In the second step we copy BIOS EDD information from the `boot_params` structure that we collected in the [arch/x86/boot/edd.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/edd.c) to the `edd` structure:
+
+이는 장치 트리 블롭, EFI 설정 데이터 등 다양한 유형의 설정 정보를 저장하는 데 사용됩니다. 두 번째 단계에서는 BIOS EDD 정보를 [arch/x86/boot/edd.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/boot/edd.c) 에서 수집 한 `boot_params`구조체에서 `edd`구조체로 복사합니다. :
 
 ```C
 static inline void __init copy_edd(void)
@@ -411,10 +415,11 @@ static inline void __init copy_edd(void)
 }
 ```
 
-Memory descriptor initialization
+메모리 디스크립터 초기화
 --------------------------------------------------------------------------------
 
-The next step is initialization of the memory descriptor of the init process. As you already can know every process has its own address space. This address space presented with special data structure which called `memory descriptor`. Directly in the linux kernel source code memory descriptor presented with `mm_struct` structure. `mm_struct` contains many different fields related with the process address space as start/end address of the kernel code/data, start/end of the brk, number of memory areas, list of memory areas and etc... This structure defined in the [include/linux/mm_types.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/mm_types.h). As every process has its own memory descriptor, `task_struct` structure contains it in the `mm` and `active_mm` field. And our first `init` process has it too. You can remember that we saw the part of initialization of the init `task_struct` with `INIT_TASK` macro in the previous [part](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-4.html):
+다음 단계는 init 프로세스의 메모리 디스크립터를 초기화하는 것입니다. 이미 알고 있듯이 모든 프로세스에는 자체 주소 공간이 있습니다. 이 주소 공간에는 '메모리 디스크립터 (memory descriptor)'라는 특수한 데이터 구조가 있습니다. 리눅스 커널 소스 코드 메모리 디스크립터 안 에서 직접적으로 `mm_struct` 구조체를 보여줍니다. `mm_struct`는 커널 코드/데이터의 시작/끝 주소, brk의 시작/끝, 메모리 영역 수, 메모리 영역 목록 등 프로세스 주소 공간과 관련된 여러 가지 필드를 포함합니다. 이 구조체는 [include/linux/mm_types.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/mm_types.h)에 정의되어 있습니다. 모든 프로세스에는 자체 메모리 디스크립터가 있는데, `task_struct` 구조체에서는 `mm` 과 `active_mm` 필드에 포함되어있습니다. 그리고 우리의 첫 번째 `init` 프로세스도 마찬가지입니다. 이전 [부분](https://junsoolee.gitbook.io/linux-insides-ko/summary/initialization/linux-initialization-4)에서 INIT_TASK` 매크로를 이용한 init인 `task_struct`의 초기화부분을 보았습니다. :
+
 
 ```C
 #define INIT_TASK(tsk)  \
@@ -428,7 +433,7 @@ The next step is initialization of the memory descriptor of the init process. As
 }
 ```
 
-`mm` points to the process address space and `active_mm` points to the active address space if process has no address space such as kernel threads (more about it you can read in the [documentation](https://www.kernel.org/doc/Documentation/vm/active_mm.txt)). Now we fill memory descriptor of the initial process:
+`mm`은 프로세스 주소 공간을 가리키고, `active_mm`은 프로세스에 커널 스레드와 같은 주소 공간이 없는 경우에 활성 주소 공간을 가리킵니다 (자세한 내용은 [문서](https://www.kernel.org/doc/Documentation/vm/active_mm.txt)를 참조하세요). 이제 초기 프로세스의 메모리 디스크립터를 커널의 텍스트, 데이터, brk로 채웁니다. :
 
 ```C
 	init_mm.start_code = (unsigned long) _text;
@@ -437,7 +442,7 @@ The next step is initialization of the memory descriptor of the init process. As
 	init_mm.brk = _brk_end;
 ```
 
-with the kernel's text, data and brk. `init_mm` is the memory descriptor of the initial process and defined as:
+`init_mm` 는 초기 프로세스의 메모리 디스크립터 이며, 다음과 같이 정의되어 있습니다. :
 
 ```C
 struct mm_struct init_mm = {
@@ -451,8 +456,8 @@ struct mm_struct init_mm = {
     INIT_MM_CONTEXT(init_mm)
 };
 ```
+여기서 `mm_rb`는 가상 메모리 영역의 레드-블랙 트리이고,`pgd`는 페이지 글로벌 디렉토리에 대한 포인터이며,`mm_users`는 주소 공간 사용자,`mm_count`는 기본 사용 카운터,`mmap_sem`은 메모리 영역 세마포어입니다. 초기 프로세스의 메모리 설명자를 설정 한 후, 다음 단계는 'mpx_mm_init'를 사용하여 Intel Memory Protection Extensions를 초기화하는 것입니다. 다음 단계는 다음을 사용하여 코드/데이터/bss 리소스를 초기화하는 것입니다.
 
-where `mm_rb` is a red-black tree of the virtual memory areas, `pgd` is a pointer to the page global directory, `mm_users` is address space users, `mm_count` is primary usage counter and `mmap_sem` is memory area semaphore. After we setup memory descriptor of the initial process, next step is initialization of the Intel Memory Protection Extensions with `mpx_mm_init`. The next step is initialization of the code/data/bss resources with:
 
 ```C
 	code_resource.start = __pa_symbol(_text);
@@ -463,7 +468,8 @@ where `mm_rb` is a red-black tree of the virtual memory areas, `pgd` is a pointe
 	bss_resource.end = __pa_symbol(__bss_stop)-1;
 ```
 
-We already know a little about `resource` structure (read above). Here we fills code/data/bss resources with their physical addresses. You can see it in the `/proc/iomem`:
+
+우리는 이미 'resource'구조체에 대해 약간은 알고 있습니다(위 참조). 여기에서는 코드/데이터/bss 리소스를 그들의 물리적 주소로 채 웁니다. 이를 `/proc/iomem`에서 볼 수 있습니다 :
 
 ```C
 00100000-be825fff : System RAM
@@ -472,7 +478,7 @@ We already know a little about `resource` structure (read above). Here we fills 
   01a11000-01ac3fff : Kernel bss
 ```
 
-All of these structures are defined in the [arch/x86/kernel/setup.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/setup.c) and look like typical resource initialization:
+이 모든 구조체는 [arch/x86/kernel/setup.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/setup.c)에 정의되어 있으며 일반적인 리소스 초기화와 유사하게 생겼습니다. :
 
 ```C
 static struct resource code_resource = {
@@ -483,7 +489,7 @@ static struct resource code_resource = {
 };
 ```
 
-The last step which we will cover in this part will be `NX` configuration. `NX-bit` or no execute bit is 63-bit in the page directory entry which controls the ability to execute code from all physical pages mapped by the table entry. This bit can only be used/set when the `no-execute` page-protection mechanism is enabled by the setting `EFER.NXE` to 1. In the `x86_configure_nx` function we check that CPU has support of `NX-bit` and it does not disabled. After the check we fill `__supported_pte_mask` depend on it:
+이 파트에서 다루는 내용의 마지막 단계는 `NX` 설정입니다. `NX-비트`또는 실행 비트 없음은 페이지 디렉토리 항목에서 63 비트이며, 테이블 엔트리에 의해 매핑 된 모든 물리적 페이지에서부터 코드를 실행하는 기능을 제어합니다. 이 비트는 `no-execute` 페이지 보호 메커니즘이 `EFER.NXE`를 1로 설정하여 활성화 한 경우에만 사용/설정할 수 있습니다. `x86_configure_nx` 함수에서 CPU가 `NX-비트 '를 지원하는지, 비활성화되지 않는지 확인합니다. 검사 후 우리는 `__supported_pte_mask`를 채웁니다. :
 
 ```C
 void x86_configure_nx(void)
@@ -495,14 +501,15 @@ void x86_configure_nx(void)
 }
 ```
 
-Conclusion
+결론
 --------------------------------------------------------------------------------
 
-It is the end of the fifth part about linux kernel initialization process. In this part we continued to dive in the `setup_arch` function which makes initialization of architecture-specific stuff. It was long part, but we have not finished with it. As i already wrote, the `setup_arch` is big function, and I am really not sure that we will cover all of it even in the next part. There were some new interesting concepts in this part like `Fix-mapped` addresses, ioremap and etc... Don't worry if they are unclear for you. There is a special part about these concepts - [Linux kernel memory management Part 2.](https://github.com/0xAX/linux-insides/blob/master/MM/linux-mm-2.md). In the next part we will continue with the initialization of the architecture-specific stuff and will see parsing of the early kernel parameters, early dump of the pci devices, `Desktop Management Interface` scanning and many many more.
+리눅스 커널 초기화 과정에 대한 다섯 번째 부분의 마지막입니다. 이 부분에서 우리는 아키텍처 고유의 것들을 초기화하는 `setup_arch` 함수에 계속해서 뛰어 들었습니다. 긴 파트였지만 끝내지 못했습니다. 앞서 작성한 것처럼 `setup_arch`는 큰 함수이므로 다음 파트에서도 모든 내용을 다룰 지 확실하지 않습니다. 이 파트에서  'Fix-mapped'주소, ioremap 등과 같은 새롭고 흥미로운 개념들이 있었습니다. 아직 확실히 이해하지 못했더라도 걱정하지 마세요.이 개념들에 대한 특별한 파트가 있습니다.-[리눅스 커널 메모리 관리 Part 2.](https://junsoolee.gitbook.io/linux-insides-ko/summary/mm/linux-mm-2). 다음 파트에서는 아키텍처 별 초기화를 계속헤사 디루고, 초기 커널 매개 변수, pci 장치의 초기 덤프, 데스크탑 관리 인터페이스 스캔과 기타 여러 가지 분석을 보게됩니다.
 
-If you have any questions or suggestions write me a comment or ping me at [twitter](https://twitter.com/0xAX).
 
-**Please note that English is not my first language, And I am really sorry for any inconvenience. If you find any mistakes please send me PR to [linux-insides](https://github.com/0xAX/linux-insides).**
+질문이나 제안 사항이 있으면 [twitter](https://twitter.com/0xAX)에 의견이나 핑을 남겨주세요.
+
+**영어는 제 모국어가 아닙니다. 그리고 여타 불편하셨던 점에 대해서 정말로 사과드립니다. 만약 실수를 찾아내셨다면 부디 [linux-insides 원본](https://github.com/0xAX/linux-internals)으로, 번역에 대해서는 [linux-insides 한글 번역](https://github.com/junsooo/linux-insides-ko)으로 PR을 보내주세요.**
 
 Links
 --------------------------------------------------------------------------------
