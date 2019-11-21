@@ -1,12 +1,12 @@
 커널 초기화. Part 8.
 ================================================================================
 
-스케쥴러 초기화
+스케줄러 초기화
 ================================================================================
 
 이것은 Linux 커널 초기화 프로세스 장의 여덟 번째 [파트](https://0xax.gitbooks.io/linux-insides/content/Initialization/index.html)이며 [이전 파트](https://github.com/0xAX/linux-insides/blob/master/Initialization/linux-initialization-7.md)에선 `setup_nr_cpu_ids` 함수에서 멈췄었습니다. 
 
-이번 파트의 주요 요점은 [스케쥴러](http://en.wikipedia.org/wiki/Scheduling_%28computing%29) 초기화입니다. 그러나 스케줄러의 초기화 프로세스를 배우기 전에 몇 가지가 필요합니다. [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c)에서 다음 단계는`setup_per_cpu_areas` 함수입니다. 이 함수는 `percpu` 변수를 위한 메모리 구역을 설정합니다. 자세한 내용은 특별히 [Per-CPU variables](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html)에 대한 파트에서 읽을 수 있습니다. `percpu` 영역이 가동되어 실행되기 시작하면 다음 단계는`smp_prepare_boot_cpu` 함수입니다.
+이번 파트의 주요 요점은 [스케줄러](http://en.wikipedia.org/wiki/Scheduling_%28computing%29) 초기화입니다. 그러나 스케줄러의 초기화 프로세스를 배우기 전에 몇 가지가 필요합니다. [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c)에서 다음 단계는`setup_per_cpu_areas` 함수입니다. 이 함수는 `percpu` 변수를 위한 메모리 구역을 설정합니다. 자세한 내용은 특별히 [Per-CPU variables](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html)에 대한 파트에서 읽을 수 있습니다. `percpu` 영역이 가동되어 실행되기 시작하면 다음 단계는`smp_prepare_boot_cpu` 함수입니다.
 
 이 함수는 [symmetric multiprocessing](http://en.wikipedia.org/wiki/Symmetric_multiprocessing)을 위한 몇가지 준비를합니다. 이 함수는 각 아키텍처에 따라 맞춰져있으므로, [arch/x86/include/asm/smp.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/include/asm/smp.h#L78) Linux 커널 헤더 파일에 있습니다. 이 함수의 정의를 살펴봅시다 :
 
@@ -241,9 +241,9 @@ $ dmesg | grep hash
 ...
 ```
 
-That's all. The rest of the stuff before scheduler initialization is the following functions: `vfs_caches_init_early` does early initialization of the [virtual file system](http://en.wikipedia.org/wiki/Virtual_file_system) (more about it will be in the chapter which will describe virtual file system), `sort_main_extable` sorts the kernel's built-in exception table entries which are between `__start___ex_table` and `__stop___ex_table`, and `trap_init` initializes trap handlers (more about last two function we will know in the separate chapter about interrupts).
+이게 다입니다. 스케줄러 초기화 전 나머지 기능은 다음과 같습니다. `vfs_caches_init_early`는 가상 파일 시스템([virtual file system](http://en.wikipedia.org/wiki/Virtual_file_system))의 초기 초기화를 수행하고 (자세한 내용은 가상 파일 시스템을 설명하는 챕터에 있습니다), `sort_main_extable`은 커널의 내장 예외 테이블의 `__start ___ ex_table`과`__stop ___ ex_table` 사이의 엔트리들을 정렬하며, `trap_init`는 트랩 핸들러를 초기화합니다 (뒤쪽 두 함수에 대한 자세한 내용은 인터럽트에 대한 챕터에서 설명합니다).
 
-The last step before the scheduler initialization is initialization of the memory manager with the `mm_init` function from the [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c). As we can see, the `mm_init` function initializes different parts of the linux kernel memory manager:
+스케줄러 초기화 전의 마지막 단계는 [init/main.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/init/main.c)의 `mm_init` 함수를 사용하여 메모리 관리자를 초기화하는 것입니다. 보시다시피 `mm_init` 함수는 리눅스 커널 메모리 관리자의 다른 부분을 초기화합니다 :
 
 ```C
 page_ext_init_flatmem();
@@ -254,22 +254,22 @@ pgtable_init();
 vmalloc_init();
 ```
 
-The first is `page_ext_init_flatmem` which depends on the `CONFIG_SPARSEMEM` kernel configuration option and initializes extended data per page handling. The `mem_init` releases all `bootmem`, the `kmem_cache_init` initializes kernel cache, the `percpu_init_late` - replaces `percpu` chunks with those allocated by [slub](http://en.wikipedia.org/wiki/SLUB_%28software%29), the `pgtable_init` - initializes the `page->ptl` kernel cache, the `vmalloc_init` - initializes `vmalloc`. Please, **NOTE** that we will not dive into details about all of these functions and concepts, but we will see all of they it in the [Linux kernel memory manager](https://0xax.gitbooks.io/linux-insides/content/MM/index.html) chapter.
+첫 번째 함수는 `page_ext_init_flatmem`이며 `CONFIG_SPARSEMEM` 커널 구성 옵션에 따라 매 페이지 처리 마다 확장 데이터를 초기화합니다. `mem_init`는 모든 `bootmem`을 해제하고, `kmem_cache_init`는 커널 캐시를 초기화합니다. `percpu_init_late`는 `percpu` 청크를 [slub](http://en.wikipedia.org/wiki/SLUB%28software%29)으로 바꾸고, `pgtable_init`은 `page-> ptl` 커널 캐시를 초기화하고, `vmalloc_init`는 `vmalloc`을 초기화합니다. **참고:** 지금은 이러한 함수들과 개념에 대한 자세한 내용은 다루지 않을 것이지만 이후 [Linux 커널 메모리 관리자](https://0xax.gitbooks.io/linux-insides/content/MM/index.html) 챕터에서 다루게 될 예정입니다.
 
-That's all. Now we can look on the `scheduler`.
+이것으로 마무리가 되었으며, 이제 우리는 스케줄러(`scheduler`)를 보러 갈 수 있습니다.
 
-Scheduler initialization
+스케줄러 초기화
 --------------------------------------------------------------------------------
 
-And now we come to the main purpose of this part - initialization of the task scheduler. I want to say again as I already did it many times, you will not see the full explanation of the scheduler here, there will be special separate chapter about this. Here will be described first initial scheduler mechanisms which are initialized first of all. So let's start.
+이제 우리는 이번 파트의 주 목적, 즉 작업 스케줄러 초기화에 도달했습니다.이미 여러 번 했어도 다시 말씀드리는 것이지만, 여기서는 스케줄러에 대한 전부를 설명하지 않습니다. 이에 대해서는 별도의 챕터에서 다룰 것입니다. 여기에선 가장 먼저 초기화되는 첫 번째 스케줄러 초기화 메커니즘에 대하여 설명할 것입니다. 그럼 시작해봅시다.
 
-Our current point is the `sched_init` function from the [kernel/sched/core.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/sched/core.c) kernel source code file and as we can understand from the function's name, it initializes scheduler. Let's start to dive into this function and try to understand how the scheduler is initialized. At the start of the `sched_init` function we can see the following call:
+현재 우리는 [kernel/sched/core.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/sched/core.c) 커널 소스 코드 파일의`sched_init` 함수에 있습니다. 그리고 함수 이름에서 알 수 있듯이 이 함수는 스케줄러를 초기화합니다. 이 함수를 파헤치고 스케줄러가 초기화되는 방법을 이해해 봅시다. `sched_init` 함수의 시작 부분에서 우리는 다음 호출을 볼 수 있습니다 :
 
 ```C
 sched_clock_init();
 ```
 
-The `sched_clock_init` is pretty easy function and as we may see it just sets `sched_clock_init` variable:
+`sched_clock_init`는 꽤나 쉬운 함수이며 보이는 것과 같이 단순히 `sched_clock_init` 변수를 설정할 뿐입니다.
 
 ```C
 void sched_clock_init(void)
@@ -278,14 +278,14 @@ void sched_clock_init(void)
 }
 ```
 
-that will be used later. At the next step is initialization of the array of `waitqueues`:
+저것은 나중에 사용될 것입니다. 그 다음 단계에서는 '대기열'(`waitqueues`)배열을 초기화합니다:
 
 ```C
 for (i = 0; i < WAIT_TABLE_SIZE; i++)
 	init_waitqueue_head(bit_wait_table + i);
 ```
 
-where `bit_wait_table` is defined as:
+여기서 `bit_wait_table`은 다음과 같이 정의됩니다:
 
 ```C
 #define WAIT_TABLE_BITS 8
@@ -293,7 +293,7 @@ where `bit_wait_table` is defined as:
 static wait_queue_head_t bit_wait_table[WAIT_TABLE_SIZE] __cacheline_aligned;
 ```
 
-The `bit_wait_table` is array of wait queues that will be used for wait/wake up of processes depends on the value of a designated bit. The next step after initialization of `waitqueues` array is calculating size of memory to allocate for the `root_task_group`. As we may see this size depends on two following kernel configuration options:
+`bit_wait_table`은 지정된(해당하는) 비트의 값에 의존하는 프로세스의 대기/활성화(wait/wake up)를 위해 사용될 대기 큐의 배열입니다. `waitqueues`배열 초기화 후 다음 단계는`root_task_group`에 할당 할 메모리 크기를 계산하는 것입니다. 아래 보이듯 그 크기는 다음 두 가지 커널 구성 옵션에 영향을 받습니다.
 
 ```C
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -307,23 +307,23 @@ The `bit_wait_table` is array of wait queues that will be used for wait/wake up 
 * `CONFIG_FAIR_GROUP_SCHED`;
 * `CONFIG_RT_GROUP_SCHED`.
 
-Both of these options provide two different planning models. As we can read from the [documentation](https://www.kernel.org/doc/Documentation/scheduler/sched-design-CFS.txt), the current scheduler - `CFS` or `Completely Fair Scheduler` use a simple concept. It models process scheduling as if the system has an ideal multitasking processor where each process would receive `1/n` processor time, where `n` is the number of the runnable processes. The scheduler uses the special set of rules. These rules determine when and how to select a new process to run and they are called `scheduling policy`.
+이 두 옵션은 서로 다른 두 가지 계획(planning) 모델을 제공합니다. [문서](https://www.kernel.org/doc/Documentation/scheduler/sched-design-CFS.txt)에서 읽을 수 있듯이 현재 스케줄러-`CFS` 혹은 `Completely Fair Scheduler`가 사용하는 개념은 간단합니다. 스케줄러는 각 프로세스가 `1/n` 프로세서 시간(processor time)을 나눠받는 이상적인 멀티 태스킹 프로세서가 시스템에 있는 것처럼 프로세스 스케줄링을 모델링합니다. 여기서`n`은 실행 가능한 프로세스의 수입니다.스케줄러는 특수한 규칙 세트를 사용합니다. 이 규칙은 실행할 새 프로세스를 언제 어떻게 선택할 지 결정하며 이를 '스케쥴링 정책'(`scheduling policy`)이라고 합니다.
 
-The `Completely Fair Scheduler` supports following `normal` or in other words `non-real-time` scheduling policies:
+'완전히 공정한 스케줄러'(`Completely Fair Scheduler`)는 '정상적인'(`normal`) 또는 다른 말로 '비 실시간'(`non-real-time`) 스케줄링 정책을 지원합니다.
 
 * `SCHED_NORMAL`;
 * `SCHED_BATCH`;
 * `SCHED_IDLE`.
 
-The `SCHED_NORMAL` is used for the most normal applications, the amount of cpu each process consumes is mostly determined by the [nice](http://en.wikipedia.org/wiki/Nice_%28Unix%29) value, the `SCHED_BATCH` used for the 100% non-interactive tasks and the `SCHED_IDLE` runs tasks only when the processor has no task to run besides this task.
+`SCHED_NORMAL`은 대부분의 일반적인 응용 프로그램에 사용되며 각 프로세스가 소비하는 CPU의 양은 대부분 [nice](http://en.wikipedia.org/wiki/Nice_%28Unix%29) 값에 의해 결정됩니다. `SCHED_BATCH`는 100 % 비 대화식(non-interactive) 작업에 사용되고, `SCHED_IDLE`은 프로세서가 이 작업 외에 실행할 다른 작업이 없는 경우에만 작업을 실행하는 데에 사용됩니다.
 
-The `real-time` policies are also supported for the time-critical applications: `SCHED_FIFO` and `SCHED_RR`. If you've read something about the Linux kernel scheduler, you can know that it is modular. It means that it supports different algorithms to schedule different types of processes. Usually this modularity is called `scheduler classes`. These modules encapsulate scheduling policy details and are handled by the scheduler core without knowing too much about them. 
+'실시간'(`realtime`) 정책은 시간이 중요한 응용 프로그램(`SCHED_FIFO` 및 `SCHED_RR`)에 의해서도 지원됩니다. 리눅스 커널 스케줄러에 대해 읽은 것이 좀 있으신 분들은 이것이 모듈 식임을 알아차렸을 것입니다. 이것은 즉, 다른 유형의 프로세스를 스케쥴링하기 위해 서로 다른 알고리즘들을 지원한다는 뜻입니다. 일반적으로 이 모듈성을 '스케줄러 클래스'(`scheduler classes`)라고 합니다. 이 모듈들은 스케줄링 정책의 세부 사항을 캡슐화하며 스케줄러 코어가 그것들에 대해 아주 많이 알고 있지 않아도 처리할 수 있게 합니다.
 
-Now let's get back to the our code and look on the two configuration options: `CONFIG_FAIR_GROUP_SCHED` and `CONFIG_RT_GROUP_SCHED`. The least unit which scheduler operates is an individual task or thread. But a process is not only one type of entities of which the scheduler may operate. Both of these options provides support for group scheduling. The first one option provides support for group scheduling with `completely fair scheduler` policies and the second with `real-time` policies respectively.
+이제 코드로 돌아가서 `CONFIG_FAIR_GROUP_SCHED`와 `CONFIG_RT_GROUP_SCHED`의 두 가지 구성 옵션을 살펴 보겠습니다. 스케줄러가 작동하는 최소 단위는 개별 작업(task) 또는 스레드입니다. 그러나 프로세스는 그저 스케줄러가 작동하는 엔티티중 한 종류가 아닙니다. 저 두 옵션 모두 그룹 스케줄링을 지원합니다. 첫 번째 옵션은 '완전히 공정한 스케줄러'(`completely fair scheduler`)정책으로 그룹 스케줄링을 지원하고 두 번째 옵션은 각각 '실시간'(`realtime`)정책으로 지원합니다.
 
-In simple words, group scheduling is a feature that allows us to schedule a set of tasks as if a single task. For example, if you create a group with two tasks on the group, then this group is just like one normal task, from the kernel perspective. After a group is scheduled, the scheduler will pick a task from this group and it will be scheduled inside the group. So, such mechanism allows us to build hierarchies and manage their resources. Although a minimal unit of scheduling is a process, the Linux kernel scheduler does not use `task_struct` structure under the hood. There is special `sched_entity` structure that is used by the Linux kernel scheduler as scheduling unit.
+간단히 말해서, 그룹 스케줄링은 일련의 작업을  단일 작업처럼 스케줄링 할 수있는 기능입니다. 예를 들어 두 개의 작업을 묶어 그룹을 만들면, 이 그룹은 커널 관점에서 보면 하나의 일반적인 작업과 같습니다. 그룹이 스케줄링 된 후 스케줄러는 이 그룹 내에서 작업을 선택하고 스케줄링합니다. 따라서 이러한 메커니즘을 통해 계층(hierarchies)을 구축하고 리소스를 관리 할 수 있습니다. 스케줄링의 최소 단위는 프로세스임에도, Linux 커널 스케줄러는 내부적으로 `task_struct` 구조를 사용하지 않습니다. 리눅스 커널 스케줄러가 스케줄링 단위로 사용하는 특별한 `sched_entity` 구조가 있습니다.
 
-So, the current goal is to calculate a space to allocate for a `sched_entity(ies)` of the root task group and we do it two times with:
+따라서 현재 목표는 루트 작업 그룹의 `sched_entity (ies)`에 할당 할 공간을 계산하여 다음과 같이 두 번 수행하는 것입니다.
 
 ```C
 #ifdef CONFIG_FAIR_GROUP_SCHED
@@ -334,12 +334,12 @@ So, the current goal is to calculate a space to allocate for a `sched_entity(ies
 #endif
 ```
 
-The first is for case when scheduling of task groups is enabled with `completely fair` scheduler and the second is for the same purpose by in a case of `real-time` scheduler. So here we calculate size which is equal to size of a pointer multiplied on amount of CPUs in the system and multiplied to `2`. We need to multiply this on `2` as we will need to allocate a space for two things:
+첫 번째는 '완전히 공정한'(`completely fair`) 스케줄러로 작업 그룹의 스케줄링이 활성화 된 경우이고, 두 번째는 '실시간'(`realtime`) 스케줄러로 작업 그룹의 스케줄링이 활성화된 경우를 위한 것입니다. 그래서 여기서는 크기를 계산하는데, 이 크기는 포인터의 크기에 CPU 갯수를 곱하고 `2`를 곱한 것과 같습니다. 2를 곱하는 것은 우리가 두가지를 저장할 공간을 할당해야 하기 때문입니다.
 
-* scheduler entity structure;
+* 스케줄러 엔티티 구조(scheduler entity structure);
 * `runqueue`.
 
-After we have calculated size, we allocate a space with the `kzalloc` function and set pointers of `sched_entity` and `runquques` there:
+크기를 계산 한 후에는 `kzalloc` 함수로 공간을 할당하고 `sched_entity`와 `runquques`에 포인터를 설정합니다.
 
 ```C
 ptr = (unsigned long)kzalloc(alloc_size, GFP_NOWAIT);
@@ -361,9 +361,9 @@ ptr = (unsigned long)kzalloc(alloc_size, GFP_NOWAIT);
 #endif
 ```
 
-As I already mentioned, the Linux group scheduling mechanism allows to specify a hierarchy. The root of such hierarchies is the `root_runqueuetask_group` task group structure. This structure contains many fields, but we are interested in `se`, `rt_se`, `cfs_rq` and `rt_rq` for this moment:
+이미 언급했듯이, 리눅스 그룹 스케줄링 메커니즘을 사용하면 계층 구조를 지정할 수 있습니다. 이러한 계층의 루트는 `root_runqueuetask_group` 작업 그룹 구조체입니다. 이 구조체에는 많은 필드가 포함되어 있지만, 이 시점에서 우리가 관심 있는 것은 `se`,`rt_se`,`cfs_rq` 및`rt_rq`입니다.
 
-The first two are instances of `sched_entity` structure. It is defined in the [include/linux/sched.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/sched.h) kernel header filed and used by the scheduler as a unit of scheduling.
+처음 두 가지는`sched_entity` 구조체의 인스턴스입니다. 이것은 [include/linux/sched.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/sched.h) 커널 헤더 파일에 정의되어 있으며 스케줄링의 단위로 스케줄러에 의해 사용됩니다.
 
 ```C
 struct task_group {
@@ -376,9 +376,9 @@ struct task_group {
 }
 ```
 
-The `cfs_rq` and `rt_rq` present `run queues`. A `run queue` is a special `per-cpu` structure that is used by the Linux kernel scheduler to store `active` threads or in other words set of threads which potentially will be picked up by the scheduler to run.
+`cfs_rq`와`rt_rq`는`run queues`를 나타냅니다. `run queue` 는 리눅스 커널 스케줄러가 `active` 스레드를 저장하기 위해 사용하는 특별한 `per-cpu` 구조체이며 다른 말로 하자면 잠재적으로 스케줄러에 의해 픽업되어 실행될 수 있는 스레드들의 집합입니다. .
 
-The space is allocated and the next step is to initialize a `bandwidth` of CPU for `real-time` and `deadline` tasks:
+ 공간이 할당되고 다음 단계는 '실시간' (`realtime`) 및 '데드라인'(`deadline`) 작업을 위한 CPU의 '대역폭'(`bandwidth`)을 초기화하는 것입니다. 
 
 ```C
 init_rt_bandwidth(&def_rt_bandwidth,
@@ -387,12 +387,12 @@ init_dl_bandwidth(&def_dl_bandwidth,
                   global_rt_period(), global_rt_runtime());
 ```
 
-All groups have to be able to rely on the amount of CPU time. The two following structures: `def_rt_bandwidth` and `def_dl_bandwidth` represent default values of bandwidths for `real-time` and `deadline` tasks. We will not look at definition of these structures as it is not so important for now, but we are interested in two following values:
+모든 그룹은 일정량의 CPU 시간(CPU time)을 사용할 수 있어야 합니다.  이하 두 구조체: `def_rt_bandwidth`와 `def_dl_bandwidth`의 두 구조체는 `realtime` 및 `deadline` 작업에 대한 대역폭의 기본값을 나타냅니다. 현재로서는 그다지 중요하지 않기 때문에 이러한 구조체의 정의는 고려하지 않을 것이며, 우리가 관심 있는 것은 다음 두 값입니다: 
 
 * `sched_rt_period_us`;
 * `sched_rt_runtime_us`.
 
-The first represents a period and the second represents quantum that is allocated for `real-time` tasks during `sched_rt_period_us`. You may see global values of these parameters in the:
+ 첫 번째는 구간(기간)을 나타내고 두 번째는 `sched_rt_period_us` 도중 `realtime` 작업에 할당된 양(quantum)입니다. 다음에서 이러한 매개 변수들의 전역 값을 볼 수 있습니다.
 
 ```
 $ cat /proc/sys/kernel/sched_rt_period_us 
@@ -402,9 +402,9 @@ $ cat /proc/sys/kernel/sched_rt_runtime_us
 950000
 ```
 
-The values related to a group can be configured in `<cgroup>/cpu.rt_period_us` and `<cgroup>/cpu.rt_runtime_us`. Due no one filesystem is not mounted yet, the `def_rt_bandwidth` and the `def_dl_bandwidth` will be initialzed with default values which will be retuned by the `global_rt_period` and `global_rt_runtime` functions.
+그룹과 관련된 값은`<cgroup>/cpu.rt_period_us` 및`<cgroup>/cpu.rt_runtime_us`에서 구성 할 수 있습니다. 파일 시스템이 아직 마운트되지 않았기 때문에 `def_rt_bandwidth` 및`def_dl_bandwidth`는 `global_rt_period` 및 `global_rt_runtime` 함수가 리턴하는 기본값으로 초기화됩니다.
 
-That's all with the bandwiths of `real-time` and `deadline` tasks and in the next step, depends on enable of [SMP](http://en.wikipedia.org/wiki/Symmetric_multiprocessing), we make initialization of the `root domain`:
+`realtime`과 `deadline` 작업의 대역폭, 이것으로 끝이며 그 다음 단계에서는 [SMP](http://en.wikipedia.org/wiki/Symmetric_multiprocessing)의 활성화 여부에 따라 `루트 도메인`의 초기화를 진행합니다:
 
 ```C
 #ifdef CONFIG_SMP
@@ -412,9 +412,9 @@ That's all with the bandwiths of `real-time` and `deadline` tasks and in the nex
 #endif
 ```
 
-The real-time scheduler requires global resources to make scheduling decision. But unfortunately scalability bottlenecks appear as the number of CPUs increase. The concept of `root domains` was introduced for improving scalability and avoid such bottlenecks. Instead of bypassing over all `run queues`, the scheduler gets information about a CPU where/from to push/pull a `real-time` task from the `root_domain` structure. This structure is defined in the [kernel/sched/sched.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/sched/sched.h) kernel header file and just keeps track of CPUs that can be used to push or pull a process.
+실시간 스케줄러는 스케줄링 결정을 위해 전역 자원(global resources)이 필요합니다. 그러나 안타깝게도 CPU 수가 증가함에 따라 확장성 병목 현상(scalability bottlenecks)이 나타납니다. '루트 도메인'(`root domains`)이라는 개념은 확장성을 개선하고 이러한 병목 현상을 피하기 위해 도입되었습니다. 스케줄러는 모든`run queues`를 우회하는 대신, `root_domain` 구조체에서 `realtime` 작업(task)을 어느 CPU로 푸시/풀 할 것인지에 대한 정보를 얻습니다. 이 구조체는 [kernel/sched/sched.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/sched/sched.h) 커널 헤더 파일에 정의되어 있으며 프로세스를 푸시하거나 풀할 수 있는 CPU만 추적합니다. 
 
-After `root domain` initialization, we make initialization of the `bandwidth` for the `real-time` tasks of the `root task group` as we did the same above: 
+'루트 도메인'(`root domain`) 초기화 후 위에서 했던 것과 동일한 기본값으로 '루트 태스크 그룹'(`root task group`) 의 `realtime` 작업에 대한 '대역폭'(`bandwidth`)을 초기화합니다.
 ```C
 #ifdef CONFIG_RT_GROUP_SCHED
 	init_rt_bandwidth(&root_task_group.rt_bandwidth,
@@ -422,16 +422,16 @@ After `root domain` initialization, we make initialization of the `bandwidth` fo
 #endif
 ```
 
-with the same default values.
-
-In the next step, depends on the `CONFIG_CGROUP_SCHED` kernel configuration option we allocate `slab` cache for `task_group(s)` and initialize the `siblings` and `children` lists of the root task group. As we can read from the documentation, the `CONFIG_CGROUP_SCHED` is:
+다음 단계에서는, `CONFIG_CGROUP_SCHED` 커널 구성 옵션에 따라 작업 그룹(들)(`task_group(s)`)에 `slab` 캐시를 할당하고 루트 작업 그룹의 `siblings` 및 `children` 리스트를 초기화합니다. 문서에서 읽을 수 있듯이, `CONFIG_CGROUP_SCHED`는 다음과 같습니다.
 
 ```
 This option allows you to create arbitrary task groups using the "cgroup" pseudo
 filesystem and control the cpu bandwidth allocated to each such task group.
+(이하 번역)
+이 옵션을 사용하면 "cgroup" 의사 파일 시스템을 사용하는 임의의 작업 그룹을 만들 수 있으며, 이러한 각 작업 그룹에 할당된 CPU 대역폭을 제어할 수 있습니다.
 ```
 
-As we finished with the lists initialization, we can see the call of the `autogroup_init` function:
+리스트 초기화를 마치면, `autogroup_init` 함수의 호출을 볼 수 있습니다 :
 
 ```C
 #ifdef CONFIG_CGROUP_SCHED
@@ -442,9 +442,9 @@ As we finished with the lists initialization, we can see the call of the `autogr
 #endif
 ```
 
-which initializes automatic process group scheduling. The `autogroup` feature is about automatic creation and population of a new task group during creation of a new session via [setsid](https://linux.die.net/man/2/setsid) call.
+이 함수는 자동 프로세스 그룹 스케줄링을 초기화합니다. `autogroup` 기능은 [setsid](https://linux.die.net/man/2/setsid) 호출을 통해 새 세션을 생성하는 동안 새 작업 그룹을 자동으로 생성하고 채우는 것에 관한 것입니다.
 
-After this we are going through the all `possible` CPUs (you can remember that `possible` CPUs are stored in the `cpu_possible_mask` bitmap that can ever be available in the system) and initialize a `runqueue` for each `possible` cpu:
+그런 다음, 모든 '가능한'(`possible`) CPU (시스템에서 사용 가능한 `possible` CPU들은 `cpu_possible_mask` 비트 맵에 저장되어 있음)를 돌며 각 `possible` CPU에 대해 `runqueue`를 초기화합니다 :
 
 ```C
 for_each_possible_cpu(i) {
@@ -454,15 +454,15 @@ for_each_possible_cpu(i) {
     ...
 ```
 
-The `rq` structure in the Linux kernel is defined in the [kernel/sched/sched.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/sched/sched.h#L625). As I already mentioned this above, a `run queue` is a fundamental data structure in a scheduling process. The scheduler uses it to determine who will be runned next. As you may see, this structure has many different fields and we will not cover all of them here, but we will look on them when they will be directly used.
+리눅스 커널의 `rq` 구조체는 [kernel/sched/sched.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/sched/sched.h#L625)에 정의되어 있습니다. 위에서 이미 언급했듯이, `run queue`는 프로세스 스케줄링에서의 기본적인 데이터 구조입니다. 스케줄러는 이걸 사용하여 다음에 실행할 프로세스를 결정합니다. 보시다시피, 이 구조체에는 여러 가지 구성요소(field)가 있지만 여기에서 모두 다루지는 않고, 각각을 직접 사용할 때에 살펴볼 것입니다.
 
-After initialization of `per-cpu` run queues with default values, we need to setup `load weight` of the first task in the system:
+CPU 별(`per-cpu`) 실행 큐를 기본값으로 초기화 한 후에는, 시스템에서 첫 번째 작업의 '로드 가중치'(`load weight`)를 설정해야합니다.
 
 ```C
 set_load_weight(&init_task);
 ```
 
-First of all let's try to understand what is it `load weight` of a process. If you will look at the definition of the `sched_entity` structure, you will see that it starts from the `load` field:
+우선 프로세스의 '로드 가중치'(`load weight`)가 무엇인지 이해해봅시다. `sched_entity` 구조체의 정의를 살펴보면 `load` 필드로 시작한다는 것을 알 수 있습니다:
 
 ```C
 struct sched_entity {
@@ -473,7 +473,7 @@ struct sched_entity {
 }
 ```
 
-represented by the `load_weight` structure which just contains two fields that represent actual load weight of a scheduler entity and its invariant value:
+`load` 필드는 스케줄러 엔티티의 실제 로드 가중치와 그 불변 값을 나타내는 두 개의 필드만으로 구성된 `load_weight` 구조체로 표현됩니다.
 
 ```C
 struct load_weight {
@@ -482,7 +482,7 @@ struct load_weight {
 };
 ```
 
-You already may know that each process in the system has `priority`. The higher priority allows to get more time to run. A `load weight` of a process is a relation between priority of this process and timeslices of this process. Each process has three following fields related to priority:
+시스템의 각 프로세스에는 '우선 순위'가 있다는 것을 이미 알고있을 것입니다. 우선 순위가 높을수록 더 많은 실행 시간을 확보할 수 있습니다. 프로세스의 '로드 가중치'(`load weight`)는 그 프로세스의 우선 순위와 타임 슬라이스(timeslices, 작업의 CPU 시간이 한도를 넘으면 강제로 다른 작업으로 전환하는 방식) 사이의 관계입니다. 각 프로세스에는 우선 순위와 관련하여 아래 세 가지 필드를 가집니다.
 
 ```C
 struct task_struct {
@@ -498,9 +498,9 @@ struct task_struct {
 }
 ```
 
-The first one is `dynamic priority` which can't be changed during lifetime of a process based on its static priority and interactivity of the process. The `static_prio` contains initial priority most likely well-known to you `nice value`. This value does not changed by the kernel if a user will not change it. The last one is `normal_priority` based on the value of the `static_prio` too, but also it depends on the scheduling policy of a process.
+첫 번째는 프로세스의 정적 우선 순위와 프로세스의 상호 작용성에 따라 프로세스 수명 동안 변경할 수없는 '동적 우선 순위'(`dynamic priority`)입니다. `static_prio`는 우리가 `nice value`로 잘 알고 있는 초기 우선 순위(initail priority)를 포함합니다. 이 값은 사용자가 변경하지 않으면 커널이 따로 변경하거나 하지 않습니다. 마지막은 `normal_priority`이며, `static_prio`의 값을 베이스로 하지만, 프로세스의 스케줄링 정책에도 영향을 받습니다.
 
-So the main goal of the `set_load_weight` function is to initialze `load_weight` fields for the `init` task:
+그래서 `set_load_weight` 함수의 주요한 목적은 `init` 작업을 위해 `load_weights` 필드를 초기화하는 것입니다:
 
 ```C
 static void set_load_weight(struct task_struct *p)
@@ -519,9 +519,9 @@ static void set_load_weight(struct task_struct *p)
 }
 ```
 
-As you may see we calculate initial `prio` from the initial value of the `static_prio` of the `init` task and use it as index of `sched_prio_to_weight` and `sched_prio_to_wmult` arrays to set `weight` and `inv_weight` values. These two arrays contain a `load weight` depends on priority value. In a case of when a process is `idle` process, we set minimal load weight.
+보시다시피, 우리는 `init` 작업의 `static_prio`의 초기 값에서 초기 `prio`를 계산하고, 이것을 `sched_prio_to_weight` 및 `sched_prio_to_wmult` 배열의 인덱스로 사용하여 `weight` 및`inv_weight` 값을 설정합니다. 이 두 배열은 우선 순위 값에 따라 `load weight`를 포함합니다. 프로세스가 `idle` 프로세스 인 경우 로드 가중치를 최소로 설정합니다.
 
-For this moment we came to the end of initialization process of the Linux kernel scheduler. The last steps are: to make current process (it will be the first `init` process) `idle` that will be runned when a cpu has no other process to run. Calculating next time period of the next calculation of CPU load and initialization of the `fair` class:
+이 시점에서 우리는 리눅스 커널 스케줄러 초기화 프로세스의 끝부분에 도달했습니다. 마지막 단계는- : CPU가 실행할 다른 프로세스가 없을 때 실행되게 현재 프로세스(아마 첫 번째 `init` 프로세스일 것입니다)를 `idle`로 만드는 것입니다. CPU load의 다음 계산 및 `fair` 클래스 초기화의 다음 기간 계산은 다음과 같습니다.
 
 ```C
 __init void init_sched_fair_class(void)
@@ -532,26 +532,26 @@ __init void init_sched_fair_class(void)
 }
 ```
 
-Here we register a [soft irq](https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-9.html) that will call the `run_rebalance_domains` handler. After the `SCHED_SOFTIRQ` will be triggered, the `run_rebalance` will be called to rebalance a run queue on the current CPU.
+여기서 우리는 `run_rebalance_domains` 처리기(handler)를 호출할 [soft irq](https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-9.html)를 등록합니다. `SCHED_SOFTIRQ`가 트리거 된 후, `run_rebalance`가 현재 CPU에서 실행 큐를 재조정하기 위해 호출됩니다.
 
-The last two steps of the `sched_init` function is to initialization of scheduler statistics and setting `scheeduler_running` variable:
+`sched_init` 함수의 마지막 두 단계는 스케줄러 통계를 초기화하고 `scheduler_running` 변수를 설정하는 것입니다.
 
 ```C
 scheduler_running = 1;
 ```
 
-That's all. Linux kernel scheduler is initialized. Of course, we have skipped many different details and explanations here, because we need to know and understand how different concepts (like process and process groups, runqueue, rcu, etc.) works in the linux kernel , but we took a short look on the scheduler initialization process. We will look all other details in the separate part which will be fully dedicated to the scheduler.
+이것으로 리눅스 커널 스케줄러가 초기화되었습니다. 비록 리눅스 커널에서 프로세스와 프로세스 그룹, runqueue, rcu 등 서로 다른 개념들이 어떻게 작동하는지 알고 이해해야 하기 때문에 여기서는 많은 다른 디테일과 설명을 건너 뛰었지만, 우리는 스케줄러 초기화 과정을 간략히 살펴 보았습니다. 우리는 스케줄러만을 다루는 별도의 파트에서 다루지 못한 모든 세부 사항들을 살펴볼 것입니다.
 
-Conclusion
+결론
 --------------------------------------------------------------------------------
 
-It is the end of the eighth part about the linux kernel initialization process. In this part, we looked on the initialization process of the scheduler and we will continue in the next part to dive in the linux kernel initialization process and will see initialization of the [RCU](http://en.wikipedia.org/wiki/Read-copy-update) and many other initialization stuff in the next part.
+이것으로 리눅스 커널 초기화 과정에 대한 여덟 번째 부분은 끝입니다. 이 파트에서는 스케줄러의 초기화 프로세스를 살펴 보았고 다음 부분에서는 계속해서 리눅스 커널 초기화 프로세스를 살펴보고 [RCU](http://en.wikipedia.org/wiki/Read-copy-update)의 초기화 및 다른 많은 초기화 요소들을 보게 될 것입니다.
 
-If you have any questions or suggestions write me a comment or ping me at [twitter](https://twitter.com/0xAX).
+만약 질문이나 의견이 있으시다면, [트위터](https://twitter.com/0xAX)에서 저를 핑해주시거나, 코멘트를 달아주세요.
 
-**Please note that English is not my first language, And I am really sorry for any inconvenience. If you find any mistakes please send me PR to [linux-insides](https://github.com/0xAX/linux-insides).**
+**영어는 제 모국어가 아닙니다, 그리고 여타 불편하셨던 점에 대해서 정말로 사과드립니다. 만약 실수들을 찾아내셨다면 부디 [linux-insides 원본](https://github.com/0xAX/linux-internals)으로, 번역에 대해서는 [linux-insides 한국 번역](https://github.com/junsooo/linux-insides-ko)로 PR을 보내주세요.**
 
-Links
+참고 링크
 --------------------------------------------------------------------------------
 
 * [CPU masks](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-2.html)
