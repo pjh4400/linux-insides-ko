@@ -614,7 +614,7 @@ asmlinkage __visible void __init x86_64_start_kernel(char * real_mode_data)
 }
 ```
 
-여기에는 하나의 전달인자인 `real_mode_data`가 있습니다.(전에 리얼 모드 데이터의 주소를 `rdi` 레지스터에 전달했음을 기억하세요).
+여기에는 하나의 전달인자인 `real_mode_data`가 있습니다.(전에 리얼 모드 데이터의 주소를 `rdi` 레지스터에 전달한 것을 기억하세요).
 
 start_kernel
 --------------------------------------------------------------------------------
@@ -642,7 +642,7 @@ BUILD_BUG_ON(__fix_to_virt(__end_of_fixed_addresses) <= MODULES_END);
 
 이 트릭이 어떻게 작동하는지 이해해 봅시다. 첫 번째 조건 인 `MODULES_VADDR <__START_KERNEL_map`을 예로 들어 보겠습니다. `!! conditions`는 `condition! = 0`과 같습니다. 따라서 `MODULES_VADDR <__START_KERNEL_map`이 true이면 `!! (condition)`에서 `1`을 얻거나 그렇지 않으면 0을 얻습니다. `2 * !! (조건)`후에 우리는 `2`또는 `0`을 얻습니다. 계산이 끝나면 두 가지 다른 동작을 얻을 수 있습니다.
 
-* 음수 인덱스를 가진 char 배열의 크기를 얻으려고 시도하기 때문에 컴파일 오류가 발생합니다(`MODULES_VADDR`이 `__START_KERNEL_map`보다 작을 수 없기 때문에 우리의 경우처럼);
+* 음수 인덱스를 가진 char 배열의 크기를 얻으려고 시도하기 때문에 컴파일 오류가 발생합니다(우리의 경우 처럼 `MODULES_VADDR`이 `__START_KERNEL_map`보다 작을 수 없기 때문에);
 * 컴파일 오류가 없습니다.
 
 그게 다입니다. 일부 상수에 따라 컴파일 오류가 발생하는 흥미로운 C 트릭입니다.
@@ -657,7 +657,7 @@ BUILD_BUG_ON(__fix_to_virt(__end_of_fixed_addresses) <= MODULES_END);
 
 곧 새로운 페이지 테이블을 만들 것입니다. 여기서 모든 페이지 글로벌 디렉토리 항목이 0임을 알 수 있습니다. 그런 다음 `next_early_pgt`를 0으로 설정하고(다음 포스트에서 이에 대한 세부 사항을 볼 것입니다) `early_top_pgt`의 물리적 주소를 `cr3`에 씁니다.
 
-그런 다음 `_bss`를 `__bss_stop`에서 `__bss_start`로 지우고 `init_top_pgt`도 지웁니다. `init_top_pgt`는 다음과 같이 [arch/x86/kerne/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S)에 정의되어 있습니다:
+그런 다음 `_bss`를 `__bss_stop`부터 `__bss_start`까지 지우고 `init_top_pgt`도 지웁니다. `init_top_pgt`는 다음과 같이 [arch/x86/kerne/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S)에 정의되어 있습니다:
 
 ```assembly
 NEXT_PGD_PAGE(init_top_pgt)
@@ -667,7 +667,7 @@ NEXT_PGD_PAGE(init_top_pgt)
 
 이것은 `early_top_pgt`와 정확히 같은 정의입니다.
 
-다음 단계는 초기 `IDT`핸들러의 설정이지만, 큰 개념이므로 다음 장에서 볼 것이다.
+다음 단계는 초기 `IDT`핸들러의 설정이지만, 큰 개념이므로 다음 장에서 볼 것입니다.
 
 결론
 --------------------------------------------------------------------------------
