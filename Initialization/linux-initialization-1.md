@@ -95,7 +95,7 @@ unsigned log __head __startup_64(unsigned long physaddr,
 }
 ```
 
-[kASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization#Linux)을 사용하도록 설정되었으므로 로드 된 'startup_64'루틴 주소가 컴파일 된 주소와 다를 수 있으므로 델타를 계산해야합니다. 다음 코드:
+[kASLR](https://en.wikipedia.org/wiki/Address_space_layout_randomization#Linux)을 사용하도록 설정되었으므로 로드 된 'startup_64'루틴 주소가 컴파일 된 주소와 다를 수 있으므로 델타를 다음 코드를 통해 계산해야합니다:
 
 ```C
 	load_delta = physaddr - (unsigned long)(_text - __START_KERNEL_map);
