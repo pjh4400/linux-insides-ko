@@ -404,7 +404,7 @@ struct worker_pool {
 
 이 구조체는 Linux 커널의 [kernel/workqueue.c](https://gitub.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d18e0bd98eb93d973/kernel/workqueueue.c) 소스 코드 파일에 정의된 구조체입니다. 이 구조체의 소스 코드는 필드가 상당히 많기 때문에 여기에 쓰지 않겠습니다. 하지만 우리는 이 필드들 중 일부는 살펴볼 것입니다.
 
-가장 기본적인 양식에서 work queue 하위 시스템(subsystem)은 다른 곳에서 대기 중인 작업을 처리할 커널 스레드를 생성하기 위한 인터페이스입니다. 이러한 커널 스레드는 모두 `worker threads`라고 합니다. 작업 대기열은 [include/linux/workqueue.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d18e0bd98d973/include/linux/workqueueue.h)에 정의된 `work_struct`에 의해 유지됩니다. 이 구조체를 살펴봅시다.
+가장 기본적인 양식에서 work queue 하위 시스템(subsystem)은 다른 곳에서 대기 중인 작업을 처리할 커널 스레드를 생성하기 위한 인터페이스입니다. 이러한 커널 스레드는 모두 일꾼 스레드(`worker threads`)라고 합니다. 작업 대기열은 [include/linux/workqueue.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d18e0bd98d973/include/linux/workqueueue.h)에 정의된 `work_struct`에 의해 유지됩니다. 이 구조체를 살펴봅시다.
 
 ```C
 struct work_struct {
@@ -431,14 +431,14 @@ systemd-cgls -k | grep kworker
 ...
 ```
 
-This process can be used to schedule the deferred functions of the workqueues (as `ksoftirqd` for `softirqs`). Besides this we can create new separate worker thread for a `workqueue`. The Linux kernel provides following macros for the creation of workqueue:
+이 프로세스는 (마치 `softirqs`의 `ksoftirqd`같이) workqueue의 연기된 함수를 스케줄링하는 데 사용할 수 있습니다. 이 외에도, 우리는 `workqueue`을 위한 새로운 분리된 일꾼 스레드를 만들 수 있습니다. Linux 커널은 정적으로 workqueue를 생성하기 위해 다음과 같은 매크로를 제공합니다.
 
 ```C
 #define DECLARE_WORK(n, f) \
     struct work_struct n = __WORK_INITIALIZER(n, f)
 ```
 
-for static creation. It takes two parameters: name of the workqueue and the workqueue function. For creation of workqueue in runtime, we can use the:
+이 매크로는 두 가지 매개 변수를 요구합니다: workqueue의 이름과 workqueue 함수. 런타임에 workqueue를 생성하려면 다음 매크로를 사용합니다:
 
 ```C
 #define INIT_WORK(_work, _func)       \
@@ -453,7 +453,7 @@ for static creation. It takes two parameters: name of the workqueue and the work
     } while (0)
 ```
 
-macro that takes `work_struct` structure that has to be created and the function to be scheduled in this workqueue. After a `work` was created with the one of these macros, we need to put it to the `workqueue`. We can do it with the help of the `queue_work` or the `queue_delayed_work` functions:
+이 매크로는 생성할 `work_struct` 구조체와 이 workqueue에서 스케줄링해야 하는 함수를 요구합니다. 이 매크로들 중 하나로 `work`가 만들어진 후에는 이를 `workqueue`에 넣어야 합니다. 이는 `queue_work` 또는 `que_delayed_work` 함수의 도움을 받아 수행할 수 있습니다.
 
 ```C
 static inline bool queue_work(struct workqueue_struct *wq,
@@ -463,7 +463,7 @@ static inline bool queue_work(struct workqueue_struct *wq,
 }
 ```
 
-The `queue_work` function just calls the `queue_work_on` function that queues work on specific processor. Note that in our case we pass the `WORK_CPU_UNBOUND` to the `queue_work_on` function. It is a part of the `enum` that is defined in the [include/linux/workqueue.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/workqueue.h) and represents workqueue which are not bound to any specific processor. The `queue_work_on` function tests and set the `WORK_STRUCT_PENDING_BIT` bit of the given `work` and executes the `__queue_work` function with the `workqueue` for the given processor and given `work`:
+`queue_work` 함수는 그저 특정 프로세서의 대기열에 작업을 넣는 `que_work_on` 함수를 호출하기만 합니다. 우리의 경우에는 `WORK_CPU_UNBOUND`를 `que_work_on` 함수로 전달하는 것을 알아두세요. 이것은 [include/linux/workqueue.h](https://github.com/torvalds/linux/blob/16f73d7e1765ccab3d20e0d98d973/include/linux/workqueue.h)에 정의된 `enum`의 일부이며, 어느 특정 프로세서에도 묶여있지 않는 workqueue를 나타냅니다. `queue_work_on` 함수는 테스트를 수행하고 주어진 `work`의 `WORK_STRUCT_PENDING_BIT`를 설정하고, 주어진 프로세서와 `work`에 대한 `workqueue`로`__queue_work` 함수를 실행합니다.
 
 ```C
 bool queue_work_on(int cpu, struct workqueue_struct *wq,
@@ -480,7 +480,7 @@ bool queue_work_on(int cpu, struct workqueue_struct *wq,
 }
 ```
 
-The `__queue_work` function gets the `work pool`. Yes, the `work pool` not `workqueue`. Actually, all `works` are not placed in the `workqueue`, but to the `work pool` that is represented by the `worker_pool` structure in the Linux kernel. As you can see above, the `workqueue_struct` structure has the `pwqs` field which is list of `worker_pools`. When we create a `workqueue`, it stands out for each processor the `pool_workqueue`. Each `pool_workqueue` associated with `worker_pool`, which is allocated on the same processor and corresponds to the type of priority queue. Through them `workqueue` interacts with `worker_pool`. So in the `__queue_work` function we set the cpu to the current processor with the `raw_smp_processor_id` (you can find information about this macro in the fourth [part](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-4.html) of the Linux kernel initialization process chapter), getting the `pool_workqueue` for the given `workqueue_struct` and insert the given `work` to the given `workqueue`:
+`__queue_work` 함수는 `work pool`을 가져옵니다. 네, `workpool`은 `workqueue`가 아닙니다. 실제로, 모든 `work`는 `workqueue`에 배치되는 것이 아니라 Linux 커널의 `worker_pool` 구조로 표현되는 `work pool`에도 배치됩니다. 위에서 볼 수 있듯이 `workque_struct`는 `worker_pools` 리스트인 `pwqs` 필드를 가지고 있습니다. `workqueue`를 만들 때 각 프로세서마다 `pool_workque`가 눈에 띕니다. `pool_workqueue`는 `worker_pool`과 관련되어 있으며, `worker_pool`은 동일한 프로세서에 할당되며 우선 순위 대기열 유형에 해당합니다. 이들을 통해 `workqueue`는 `worker_pool`과 상호 작용합니다. 따라서 `__queue_work` 함수에서는 `raw_smp_processor_id`(Linux 커널 초기화 프로세스 챕터의 네 번째 [part](https://0xax.gitbooks.io/linux-insides/content/Initialization/linux-initialization-4.html)에서 이 매크로에 대한 정보를 찾을 수 있습니다)를 사용하여 cpu를 현재 프로세서로 설정하고 주어진 `workqueue_struct`에 대한 `pool_workqueue`를 얻고, 주어진 `work`를 주어진 `workqueue`에 삽입합니다.
 
 ```C
 static void __queue_work(int cpu, struct workqueue_struct *wq,
@@ -502,22 +502,22 @@ else
 insert_work(pwq, work, worklist, work_flags);
 ```
 
-As we can create `works` and `workqueue`, we need to know when they are executed. As I already wrote, all `works` are executed by the kernel thread. When this kernel thread is scheduled, it starts to execute `works` from the given `workqueue`. Each worker thread executes a loop inside the `worker_thread` function. This thread makes many different things and part of these things are similar to what we saw before in this part. As it starts executing, it removes all `work_struct` or `works` from its `workqueue`.
+`work`과 `workqueue`를 만들 수 있는 만큼, 이것들이 언제 실행되는지 알아야 합니다. 제가 이미 썼듯이, 모든 `work`는 커널 스레드에 의해 실행됩니다. 이 커널 스레드가 예약되면 주어진 `workqueue`에서 `work`를 실행하기 시작합니다. 각 일꾼 스레드는 `worker_thread` 함수 내의 루프를 실행합니다. 이 스레드는 많은 차이를 만들지만 이것들의 일부는 우리가 이 부분에서 이전에 보았던 것과 비슷합니다. 이것은 실행을 시작하면서 `work_struct` 또는 `works`를 `workqueue`에서 모두 제거합니다.
 
-That's all.
+이것으로 끝입니다
 
-Conclusion
+결론
 --------------------------------------------------------------------------------
 
-It is the end of the ninth part of the [Interrupts and Interrupt Handling](https://0xax.gitbooks.io/linux-insides/content/Interrupts/index.html) chapter and we continued to dive into external hardware interrupts in this part. In the previous part we saw initialization of the `IRQs` and main `irq_desc` structure. In this part we saw three concepts: the `softirq`, `tasklet` and `workqueue` that are used for the deferred functions.
+이것으로 [Interrupts and Interrupt Handling](https://0xax.gitbooks.io/linux-insides/content/Interrupts/index.html) 챕터의 9번째 파트는 끝이며, 이번 파트에서는 외부 하드웨어 인터럽트를 계속 살펴봤습니다. 이전 파트에서는 `IRQ`와 메인 `irq_desc` 구조체의 초기화를 보았습니다. 이번 파트에서는 연기되는 함수들에 사용되는 `softirq`, `tasklet` 및 `workqueue`의 세 가지 개념을 보았습니다.
 
-The next part will be last part of the `Interrupts and Interrupt Handling` chapter and we will look on the real hardware driver and will try to learn how it works with the interrupts subsystem.
+다음 파트에서는 '인터럽트와 인터럽트 처리' 챕터의 마지막 부분으로, 실제 하드웨어 드라이버를 살펴보고 인터럽트 서브시스템에서 어떻게 작동하는지 알아보겠습니다.
 
-If you have any questions or suggestions, write me a comment or ping me at [twitter](https://twitter.com/0xAX).
+만약 질문이나 의견이 있으시다면, [트위터](https://twitter.com/0xAX)에서 저를 핑해주시거나, 코멘트를 달아주세요.
 
-**Please note that English is not my first language, And I am really sorry for any inconvenience. If you find any mistakes please send me PR to [linux-insides](https://github.com/0xAX/linux-insides).**
+**영어는 제 모국어가 아닙니다, 그리고 여타 불편하셨던 점에 대해서 정말로 사과드립니다. 만약 실수들을 찾아내셨다면 부디 [linux-insides 원본](https://github.com/0xAX/linux-internals)으로, 번역에 대해서는 [linux-insides 한국 번역](https://github.com/junsooo/linux-insides-ko)로 PR을 보내주세요.**
 
-Links
+참고 링크
 --------------------------------------------------------------------------------
 
 * [initcall](https://kernelnewbies.org/Documents/InitcallMechanism)
