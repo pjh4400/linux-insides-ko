@@ -4,7 +4,7 @@
 예외
 --------------------------------------------------------------------------------
 
-이것은 리눅스 커널에서 예외 처리를 다루는 세 번째 파트입니다 [chapter](https://0xax.gitbooks.io/linux-insides/content/Interrupts/index.html)  그리고 이전 [파트](https://0xax.gitbooks.io/linux-insides/content/Interrupts/index.html)에서  우리는 [arch/x86/kernel/setup.c](https://github.com/torvalds/linux/blame/master/arch/x86/kernel/setup.c) 소스코드의  `setup_arch` 함수에서 멈췄습니다. 
+이것은 리눅스 커널에서 인터럽트 처리를 다루는 세 번째 파트입니다 [chapter](https://0xax.gitbooks.io/linux-insides/content/Interrupts/index.html)  그리고 이전 [파트](https://0xax.gitbooks.io/linux-insides/content/Interrupts/index.html)에서  우리는 [arch/x86/kernel/setup.c](https://github.com/torvalds/linux/blame/master/arch/x86/kernel/setup.c) 소스코드의  `setup_arch` 함수에서 멈췄습니다. 
 
 우리는 이미이 함수가 아키텍처 고유의 초기화를 실행한다는 것을 알고 있습니다. 우리의 경우`setup_arch` 함수는 [x86_64](https://en.wikipedia.org/wiki/X86-64) 아키텍처 관련 초기화를 합니다. `setup_arch`는 큰 기능이며, 이전 부분에서는 다음 두 가지 예외에 대한 두 가지 예외 처리기 설정을 중단했습니다.
 
