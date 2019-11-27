@@ -449,27 +449,27 @@ static struct irqaction irq2 = {
 
 앞에서 인터럽트 컨트롤러는 두 개의 칩으로 구성되었고 하나는 두 번째 칩에 연결되었습니다. 이 `IRQ 2` 라인을 통해 첫 번째 칩에 연결된 두 번째 칩은 `8`부터 `15`까지의 라인들을 서비스했고, 이 다음에 첫번째 라인을 서비스했습니다. 예를 들어 [Intel 8259A](https://en.wikipedia.org/wiki/Intel_8259)는 다음과 같습니다. :
 
-* `IRQ 0`  - system time;
-* `IRQ 1`  - keyboard;
-* `IRQ 2`  - used for devices which are cascade connected;
+* `IRQ 0`  - 시스템 시간;
+* `IRQ 1`  - 키보드;
+* `IRQ 2`  - 종속 연결 된 장치들에 사용;
 * `IRQ 8`  - [RTC](https://en.wikipedia.org/wiki/Real-time_clock);
-* `IRQ 9`  - reserved;
-* `IRQ 10` - reserved;
-* `IRQ 11` - reserved;
-* `IRQ 12` - `ps/2` mouse;
-* `IRQ 13` - coprocessor;
-* `IRQ 14` - hard drive controller;
-* `IRQ 1`  - reserved;
-* `IRQ 3`  - `COM2` and `COM4`;
-* `IRQ 4`  - `COM1` and `COM3`;
+* `IRQ 9`  - 예약됨;
+* `IRQ 10` - 예약됨;
+* `IRQ 11` - 예약됨;
+* `IRQ 12` - `ps/2` 마우스;
+* `IRQ 13` - 보조 프로세서;
+* `IRQ 14` - 하드 드라이브 컨트롤러;
+* `IRQ 1`  - 예약됨;
+* `IRQ 3`  - `COM2` 와 `COM4`;
+* `IRQ 4`  - `COM1` 와 `COM3`;
 * `IRQ 5`  - `LPT2`;
-* `IRQ 6`  - drive controller;
+* `IRQ 6`  - 드라이브 컨트롤러;
 * `IRQ 7`  - `LPT1`.
 
 [kernel/irq/manage.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/kernel/irq/manage.c)에 정의 된 `setup_irq` 함수는 두 개의 매개 변수를 사용합니다. :
 
-* vector number of an interrupt;
-* `irqaction` structure related with an interrupt.
+* 인터럽트의 벡터 수;
+* 인터럽트와 관련 된 `irqaction` 구조체.
 
 이 함수는 처음에 주어진 벡터 번호에서 인터럽트 디스크립터를 초기화합니다. :
 
@@ -511,11 +511,9 @@ last_unhandled 0 ms
 --------------------------------------------------------------------------------
 
 
-[인터럽트와 인터럽트 처리] 장의 8 번째 파트가 끝났으며, 우리는 이 파트에서 외부 하드웨어 인터럽트에 대해 계속 연구했습니다. 이전 파트에서 우리는 이를 시작했고 `IRQs`의 초기 초기화를 보았습니다. 그리고 이 파트에서 우리는 이미 `init_IRQ` 함수에서 초기 인터럽트가 아닌 인터럽트를 보았습니다. 인터럽트의 벡터 번호를 저장하는 CPU 당 `vector_irq`의 초기화를 보았으며, 외부 하드웨어 인터럽트와 관련된 다른 것들의 인터럽트 처리 및 초기화 중에 사용될 것입니다.
+[인터럽트와 인터럽트 처리](https://junsoolee.gitbook.io/linux-insides-ko/summary/interrupts) 챕터의 8 번째 파트가 끝났으며, 우리는 이 파트에서 외부 하드웨어 인터럽트에 대해 계속 연구했습니다. 이전 파트에서 우리는 이를 시작했고 `IRQs`의 초기 초기화를 보았습니다. 그리고 이 파트에서 우리는 이미 `init_IRQ` 함수에서 초기 인터럽트가 아닌 인터럽트를 보았습니다. 인터럽트의 벡터 번호를 저장하는 CPU 당 `vector_irq`의 초기화를 보았으며, 외부 하드웨어 인터럽트와 관련된 다른 것들의 인터럽트 처리 및 초기화 중에 사용될 것입니다.
 
 다음 파트에서는 관련 내용을 처리하는 인터럽트를 계속 배우고 `softirqs`의 초기화를 보게 될 것입니다.
-
-It is the end of the eighth part of the [Interrupts and Interrupt Handling](https://0xax.gitbooks.io/linux-insides/content/Interrupts/index.html) chapter and we continued to dive into external hardware interrupts in this part. In the previous part we started to do it and saw early initialization of the `IRQs`. In this part we already saw non-early interrupts initialization in the `init_IRQ` function. We saw initialization of the `vector_irq` per-cpu array which is store vector numbers of the interrupts and will be used during interrupt handling and initialization of other stuff which is related to the external hardware interrupts.
 
 질문이나 제안 사항이 있으면 [twitter](https://twitter.com/0xAX)에 의견이나 핑을 남겨주세요.
 
