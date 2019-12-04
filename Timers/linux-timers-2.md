@@ -268,17 +268,16 @@ void __clocksource_update_freq_scale(struct clocksource *cs, u32 scale, u32 freq
 }
 ```
 
-Here we can see calculation of the maximum number of seconds which we can run before a clock source counter will overflow. First of all we fill the `sec` variable with the value of a clock source mask. Remember that a clock source's mask represents maximum amount of bits that are valid for the given clock source. After this, we can see two division operations. At first we divide our `sec` variable on a clock source frequency and then on scale factor. The `freq` parameter shows us how many timer interrupts will be occurred in one second. So, we divide `mask` value that represents maximum number of a counter (for example `jiffy`) on the frequency of a timer and will get the maximum number of seconds for the certain clock source. The second division operation will give us maximum number of seconds for the certain clock source depends on its scale factor which can be `1` hertz or `1` kilohertz (10^3 Hz).
+여기에서 클럭 소스 카운터가 오버플로 되기 전에 실행할 수 있는 초의 최대 시간을 계산하는 것을 볼 수 있습니다. 우선 `sec`변수를 클럭 소스 마스크의 값으로 채웁니다. 클럭 소스 마스크가 주어진 클럭 소스에 대해 유효한 비트의 최대량을 나타내는 것을 기억하십시오. 그 다음, 우리는 두 개의 분할 작업을 볼 수 있습니다. 먼저 `sec`변수를 클럭 소스 주파수와 스케일 요소로 나눕니다. `freq`매개변수는 1초 동안 얼마나 많은 타이머 인터럽트가 발생하는지 보여줍니다. 따라서, 우리는 타이머의 주파수로 카운터(예시 `jiffy`)의 최대 번호를 나타내는 `mask`값을 나누고 특정 클럭 소스에 대한 최대 시간(초)을 얻습니다. 두 번째 나눗셈 연산은 `1`헤르츠 또는 `1`킬로헤르츠(10^3 Hz)의 스케일 요소에 따라 특정 클럭 소스를 위한 최대 시간(초)을 줍니다.
 
-
-After we have got maximum number of seconds, we check this value and set it to `1` or `600` depends on the result at the next step. These values is maximum sleeping time for a clocksource in seconds. In the next step we can see call of the `clocks_calc_mult_shift`. Main point of this function is calculation of the `mult` and `shift` values for a given clock source. In the end of the `__clocksource_update_freq_scale` function we check that just calculated `mult` value of a given clock source will not cause overflow after adjustment, update the `max_idle_ns` and `max_cycles` values of a given clock source with the maximum nanoseconds that can be converted to a clock source counter and print result to the kernel buffer:
+최대 시간(초)을 얻은 다음, 우리는 이 값을 확인하고 다음 단계의 결과에 따라 `1` 또는 `600`으로 설정합니다. 이 값들은 초 단위의 클럭 소스를 위한 최대 대기 시간입니다. 다음 단계에서 우리는 `clocks_calc_mult_shift`의 호출을 볼 수 있습니다. 이 함수의 중요한 점은 주어진 클럭 소스를 위한 `mult`와 `shift` 값의 계산입니다. `__clocksource_update_freq_scale`함수의 끝에서 우리는 주어진 클럭 소스의 계산된 `mult`값이 조정 후 오버플로를 유발하지 않는지 확인하고 주어진 클럭 소스의 값 `max_idle_ns`와 `max_cycles`를 클럭 소스 카운터로 변환될 수 있는 최대 나노 초로 업데이트 하고 결과를 커널 버퍼로 출력합니다:
 
 ```C
 pr_info("%s: mask: 0x%llx max_cycles: 0x%llx, max_idle_ns: %lld ns\n",
 	cs->name, cs->mask, cs->max_cycles, cs->max_idle_ns);
 ```
 
-that we can see in the [dmesg](https://en.wikipedia.org/wiki/Dmesg) output:
+[dmesg](https://en.wikipedia.org/wiki/Dmesg)출력에서 볼 수 있습니다:
 
 ```
 $ dmesg | grep "clocksource:"
@@ -289,7 +288,7 @@ $ dmesg | grep "clocksource:"
 [    1.452979] clocksource: tsc: mask: 0xffffffffffffffff max_cycles: 0x7350b459580, max_idle_ns: 881591204237 ns
 ```
 
-After the `__clocksource_update_freq_scale` function will finish its work, we can return back to the `__clocksource_register_scale` function that will register new clock source. We can see the call of the following three functions:
+`__clocksource_update_freq_scale`함수가 작업을 완료한 다음, 새로운 클럭 소스를 등록하는 `__clocksource_register_scale`함수로 돌아갈 수 있습니다. 다음 세 함수의 호출을 볼 수 있습니다:
 
 ```C
 mutex_lock(&clocksource_mutex);
@@ -299,9 +298,9 @@ clocksource_select();
 mutex_unlock(&clocksource_mutex);
 ```
 
-Note that before the first will be called, we lock the `clocksource_mutex` [mutex](https://en.wikipedia.org/wiki/Mutual_exclusion). The point of the `clocksource_mutex` mutex is to protect `curr_clocksource` variable which represents currently selected `clocksource` and `clocksource_list` variable which represents list that contains registered `clocksources`. Now, let's look on these three functions.
+첫 번째 함수가 호출되기 전에, `clocksource_mutex`[뮤텍스](https://en.wikipedia.org/wiki/Mutual_exclusion)를 잠그십시오. `clocksource_mutex`뮤텍스의 요점은 현재 선택된 `clocksource`와 등록된 `clocksources`를 포함한 리스트를 나타내는 `clocksource_list`를 나타내는 `curr_clocksource` 변수를 보호하는 것입니다. 이제, 이 세 개의 함수를 살펴봅시다.
 
-The first `clocksource_enqueue` function and other two defined in the same source code [file](https://github.com/torvalds/linux/tree/master/kernel/time/clocksource.c). We go through all already registered `clocksources` or in other words we go through all elements of the `clocksource_list` and tries to find best place for a given `clocksource`:
+첫 번째 `clocksource_enqueue`함수와 다른 두 함수는 동일한 소스 코드 [파일](https://github.com/torvalds/linux/tree/master/kernel/time/clocksource.c)에 정의되어있습니다. 우리는 이미 등록된 `clocksources`의 모든 과정을 거칩니다. 다시 말해 우리는 `clocksource_list`의 모든 요소를 거치며 주어진 `clocksource`에 가장 적합한 장소를 찾으려합니다:
 
 ```C
 static void clocksource_enqueue(struct clocksource *cs)
@@ -316,9 +315,9 @@ static void clocksource_enqueue(struct clocksource *cs)
 }
 ```
 
-In the end we just insert new clocksource to the `clocksource_list`. The second function - `clocksource_enqueue_watchdog` does almost the same that previous function, but it inserts new clock source to the `wd_list` depends on flags of a clock source and starts new [watchdog](https://en.wikipedia.org/wiki/Watchdog_timer) timer. As I already wrote, we will not consider `watchdog` related stuff in this part but will do it in next parts.
+결국 우리는 새로운 클럭소스를 `clocksource_list`에 삽입합니다. 두 번째 함수 `clocksource_enqueue_watchdog`는 이전 함수와 거의 같지만 새로운 클럭 소스를 클럭 소스의 플래그에 의존하는 `wd_list`에 삽입하고 새로운 [watchdog](https://en.wikipedia.org/wiki/Watchdog_timer)타이머를 시작합니다. 따라서 이미 쓴 것처럼, 우리는 이 파트에서 관련된 `watchdog`를 고려하지 않아도 되지만 다음 파트에서 다룰 것입니다. 
 
-The last function is the `clocksource_select`. As we can understand from the function's name, main point of this function - select the best `clocksource` from registered clocksources. This function consists only from the call of the function helper:
+마지막 함수는 `clocksource_select`입니다. 함수 이름에서 이해할 수 있듯이, 이 함수의 중요한 점은 등록된 클럭소스에서 최고의  `clocksource`를 선택하는 것입니다. 이 함수는 함수 도우미의 호출로만 구성됩니다:
 
 ```C
 static void clocksource_select(void)
@@ -327,7 +326,7 @@ static void clocksource_select(void)
 }
 ```
 
-Note that the `__clocksource_select` function takes one parameter (`false` in our case). This [bool](https://en.wikipedia.org/wiki/Boolean_data_type) parameter shows how to traverse the `clocksource_list`. In our case we pass `false` that is meant that we will go through all entries of the `clocksource_list`. We already know that `clocksource` with the best rating will the first in the `clocksource_list` after the call of the `clocksource_enqueue` function, so we can easily get it from this list. After we found a clock source with the best rating, we switch to it:
+`__clocksource_select`함수는 하나의 매개변수(우리의 경우 `false`)를 가집니다. 이 [bool](https://en.wikipedia.org/wiki/Boolean_data_type)매개변수는 `clocksource_list`가 어떻게 가로지르는지 보여줍니다. 우리의 경우 `clocksource_list`의 모든 엔트리를 거치는 것을 의미하는 `false`를 전달합니다. 우리는 이미 `clocksource_enqueue`함수의 호출 다음 첫 번째 `clocksource_list`가 가장 높은 등급의 `clocksource`인 것을 알기 때문에 목록에서 쉽게 얻을 수 있습니다. 최고 등급의 클럭 소스를 찾은 다음 다음으로 전환합니다:
 
 ```C
 if (curr_clocksource != best && !timekeeping_notify(best)) {
@@ -336,7 +335,7 @@ if (curr_clocksource != best && !timekeeping_notify(best)) {
 }
 ```
 
-The result of this operation we can see in the `dmesg` output:
+이 작업의 결과는 `dmesg`출력에서 볼 수 있습니다:
 
 ```
 $ dmesg | grep Switched
@@ -344,9 +343,9 @@ $ dmesg | grep Switched
 [    2.452966] clocksource: Switched to clocksource tsc
 ```
 
-Note that we can see two clock sources in the `dmesg` output (`hpet` and `tsc` in our case). Yes, actually there can be many different clock sources on a particular hardware. So the Linux kernel knows about all registered clock sources and switches to a clock source with a better rating each time after registration of a new clock source.
+`dmesg`출력(우리의 경우 `hpet`와 `tsc`)에서 두 클럭 소스를 볼 수 있습니다. 예, 실제로 특정 하드웨어에는 다양한 클럭 소스가 있을 수 있습니다. 따라서 리눅스 커널은 등록된 모든 클럭 소스를 알며 새로운 클럭 소스를 등록한 다음 매번 더 좋은 등급의 클럭 소스로 전환합니다.
 
-If we will look on the bottom of the [kernel/time/clocksource.c](https://github.com/torvalds/linux/tree/master/kernel/time/clocksource.c) source code file, we will see that it has [sysfs](https://en.wikipedia.org/wiki/Sysfs) interface. Main initialization occurs in the `init_clocksource_sysfs` function which will be called during device `initcalls`. Let's look on the implementation of the `init_clocksource_sysfs` function:
+[kernel/time/clocksource.c](https://github.com/torvalds/linux/tree/master/kernel/time/clocksource.c)소스 코드 파일의 맨 아래를 보면, [sysfs](https://en.wikipedia.org/wiki/Sysfs)인터페이스를 볼 수 있습니다. `initcalls`장치가 호출되는 동안 `init_clocksource_sysfs`함수에서 기본 초기화가 일어납니다.`init_clocksource_sysfs`함수의 구현을 봅시다:
 
 ```C
 static struct bus_type clocksource_subsys = {
@@ -376,14 +375,14 @@ static int __init init_clocksource_sysfs(void)
 device_initcall(init_clocksource_sysfs);
 ```
 
-First of all we can see that it registers a `clocksource` subsystem with the call of the `subsys_system_register` function. In other words, after the call of this function, we will have following directory:
+우선 `subsys_system_register`함수의 호출로 `clocksource`서브시스템을 등록하는 것을 볼 수 있습니다. 다시 말해, 함수의 호출 이후 다음 디렉토리를 갖게 됩니다:
 
 ```
 $ pwd
 /sys/devices/system/clocksource
 ```
 
-After this step, we can see registration of the `device_clocksource` device which is represented by the following structure:
+이 단계 후에, 다음 구조체로 나타내지는 `device_clocksource`장치의 등록을 볼 수 있습니다:
 
 ```C
 static struct device device_clocksource = {
@@ -392,42 +391,42 @@ static struct device device_clocksource = {
 };
 ```
 
-and creation of three files:
+그리고 세 개의 파일을 생성합니다:
 
 * `dev_attr_current_clocksource`;
 * `dev_attr_unbind_clocksource`;
 * `dev_attr_available_clocksource`.
 
-These files will provide information about current clock source in the system, available clock sources in the system and interface which allows to unbind the clock source.
+이 파일들은 시스템의 현재 클럭 소스, 시스템에서 사용가능한 클럭 소스, 클럭 소스의 언바인드를 허용하는 인터페이스에 관한 정보를 제공합니다.
 
-After the `init_clocksource_sysfs` function will be executed, we will be able find some information about available clock sources in the:
+`init_clocksource_sysfs`함수가 실행된 다음, 다음에서 사용가능한 클럭 소스에 관한 일부 정보를 찾을 수 있습니다:
 
 ```
 $ cat /sys/devices/system/clocksource/clocksource0/available_clocksource 
 tsc hpet acpi_pm 
 ```
 
-Or for example information about current clock source in the system:
+또는 현재 클럭 소스에 대한 정보는 다음과 같습니다:
 
 ```
 $ cat /sys/devices/system/clocksource/clocksource0/current_clocksource 
 tsc
 ```
 
-In the previous part, we saw API for the registration of the `jiffies` clock source, but didn't dive into details about the `clocksource` framework. In this part we did it and saw implementation of the new clock source registration and selection of a clock source with the best rating value in the system. Of course, this is not all API that `clocksource` framework provides. There a couple additional functions like `clocksource_unregister` for removing given clock source from the `clocksource_list` and etc. But I will not describe this functions in this part, because they are not important for us right now. Anyway if you are interesting in it, you can find it in the [kernel/time/clocksource.c](https://github.com/torvalds/linux/tree/master/kernel/time/clocksource.c).
+이전 파트에서는, `jiffies`클럭 소스 등록을 위한 API을 봤지만 `clocksource`프레임워크에 관한 자세한 내용은 다루지 않았습니다. 이 파트에서 우리는 새로운 클럭 소스 등록을 구현하고 시스템에서 최고의 등급 값을 가진 클럭 소스를 선택하는 것을 봤습니다. 물론, 이것은 `clocksource` 프레임워크가 제공하는 모든 API가 아닙니다. `clocksource_list` 등에서 주어진 클럭 소스를 제거하기 위한 `clocksource_unregister` 같은 몇 가지 추가 함수가 있습니다. 그러나 이 함수는 현재 우리에게 중요하지 않으므로 이 파트에서는 설명하지 않겠습니다. 어쨌거나 흥미가 있으면, [kernel/time/clocksource.c](https://github.com/torvalds/linux/tree/master/kernel/time/clocksource.c)에서 찾아볼 수 있습니다.
 
-That's all.
+그것이 전부입니다.
 
-Conclusion
+결론
 --------------------------------------------------------------------------------
 
-This is the end of the second part of the chapter that describes timers and timer management related stuff in the Linux kernel. In the previous part got acquainted with the following two concepts: `jiffies` and `clocksource`. In this part we saw some examples of the `jiffies` usage and knew more details about the `clocksource` concept.
+이것은 리눅스 커널에서 타이머 및 시간 관리에 관해 설명하는 챕터의 두 번째 파트의 끝입니다. 이전 파트에서는 다음과 같은 두 개념: `jiffies` 및 `clocksource`와 접했습니다. 이 파트에서 우리는 `jiffies`사용법의 몇 가지 예시를 봤고 더 자세한 `clocksource` 개념을 알았습니다.
 
-If you have questions or suggestions, feel free to ping me in twitter [0xAX](https://twitter.com/0xAX), drop me [email](anotherworldofworld@gmail.com) or just create [issue](https://github.com/0xAX/linux-insides/issues/new).
+질문이나 제안 사항이 있다면, 트위터 [0xAX](https://twitter.com/0xAX)로 자유롭게 보내거나 제 [이메일](anotherworldofworld@gmail.com)에 넣거나 [이슈](https://github.com/0xAX/linux-insides/issues/new)를 만들어 주세요.
 
-**Please note that English is not my first language and I am really sorry for any inconvenience. If you found any mistakes please send me PR to [linux-insides](https://github.com/0xAX/linux-insides).**
+**영어는 모국어가 아니어서 모든 불편한 점은 정말 죄송합니다. 실수를 발견하면 저에게 [linux-insides](https://github.com/0xAX/linux-insides)로 PR을 보내주십시오.**
 
-Links
+링크
 -------------------------------------------------------------------------------
 
 * [x86](https://en.wikipedia.org/wiki/X86)
@@ -435,17 +434,17 @@ Links
 * [uptime](https://en.wikipedia.org/wiki/Uptime)
 * [Ensoniq Soundscape Elite](https://en.wikipedia.org/wiki/Ensoniq_Soundscape_Elite)
 * [RTC](https://en.wikipedia.org/wiki/Real-time_clock)
-* [interrupts](https://en.wikipedia.org/wiki/Interrupt)
+* [인터럽트](https://en.wikipedia.org/wiki/Interrupt)
 * [IBM PC](https://en.wikipedia.org/wiki/IBM_Personal_Computer)
 * [programmable interval timer](https://en.wikipedia.org/wiki/Programmable_interval_timer)
 * [Hz](https://en.wikipedia.org/wiki/Hertz)
-* [nanoseconds](https://en.wikipedia.org/wiki/Nanosecond)
+* [나노 초](https://en.wikipedia.org/wiki/Nanosecond)
 * [dmesg](https://en.wikipedia.org/wiki/Dmesg)
-* [time stamp counter](https://en.wikipedia.org/wiki/Time_Stamp_Counter)
-* [loadable kernel module](https://en.wikipedia.org/wiki/Loadable_kernel_module)
+* [타임 스탬프 카운터](https://en.wikipedia.org/wiki/Time_Stamp_Counter)
+* [로드 가능한 커널 모듈](https://en.wikipedia.org/wiki/Loadable_kernel_module)
 * [IA64](https://en.wikipedia.org/wiki/IA-64)
 * [watchdog](https://en.wikipedia.org/wiki/Watchdog_timer)
-* [clock rate](https://en.wikipedia.org/wiki/Clock_rate)
-* [mutex](https://en.wikipedia.org/wiki/Mutual_exclusion)
+* [클럭 속도](https://en.wikipedia.org/wiki/Clock_rate)
+* [뮤텍스](https://en.wikipedia.org/wiki/Mutual_exclusion)
 * [sysfs](https://en.wikipedia.org/wiki/Sysfs)
-* [previous part](https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-1.html)
+* [이전 파트](https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-1.html)
