@@ -1,14 +1,14 @@
-How does the `open` system call work
+어떻게 `open` 시스템 콜 작업을 수행하나요?
 --------------------------------------------------------------------------------
 
-Introduction
+소개
 --------------------------------------------------------------------------------
 
-This is the fifth part of the chapter that describes [system calls](https://en.wikipedia.org/wiki/System_call) mechanism in the Linux kernel. Previous parts of this chapter described this mechanism in general. Now I will try to describe implementation of different system calls in the Linux kernel. Previous parts from this chapter and parts from other chapters of the books describe mostly deep parts of the Linux kernel that are faintly visible or fully invisible from the userspace. But the Linux kernel code is not only about itself. The vast of the Linux kernel code provides ability to our code. Due to the linux kernel our programs can read/write from/to files and don't know anything about sectors, tracks and other parts of a disk structures, we can send data over network and don't build encapsulated network packets by hand and etc.
+이것은 리눅스 커널의 [시스템 콜](https://en.wikipedia.org/wiki/System_call) 메커니즘을 설명하는 이 장의 다섯 번째 부분입니다. 이 장의 이전 부분에서는 이 메커니즘을 일반적으로 설명했습니다. 이제 Linux 커널에서 다른 시스템 호출의 구현을 설명하려고 합니다. 이 장의 이전 부분과 이 책의 다른 장의 부분은 사용자 공간에서 희미하게 보이거나 완전히 보이지 않는 Linux 커널의 대부분을 설명합니다. 그러나 리눅스 커널 코드는 그 자체가 아닙니다. 광대 한 리눅스 커널 코드는 우리 코드에 능력을 제공합니다. 리눅스 커널로 인해 우리 프로그램은 파일을 읽고 쓸 수 있으며 섹터, 트랙 및 디스크 구조의 다른 부분에 대해 전혀 알지 못하고도 네트워크를 통해 데이터를 보낼 수 있으며 수동으로 캡슐화 된 네트워크 패킷을 만들 지 않아도 됩니다.
 
-I don't know how about you, but it is interesting to me not only how an operating system works, but how do my software interacts with it. As you may know, our programs interacts with the kernel through the special mechanism which is called [system call](https://en.wikipedia.org/wiki/System_call). So, I've decided to write series of parts which will describe implementation and behavior of system calls which we are using every day like `read`, `write`, `open`, `close`, `dup` and etc.
+당신의 경우 어떤지 모르겠지만 운영 체제가 작동하는 방법뿐만 아니라 소프트웨어가 어떻게 상호 작용하는지는 흥미롭습니다. 아시다시피, 우리의 프로그램은 [시스템 호출](https://en.wikipedia.org/wiki/System_call)이라는 특수 메커니즘을 통해 커널과 상호 작용합니다. 그래서 저는 `읽기`, `쓰기`, `열기`, `닫기`, `dup` 등과 같은 매일 우리가 사용하는 시스템 호출의 구현과 동작을 설명하는 일련의 부분을 작성하기로 결정했습니다 .
 
-I have decided to start from the description of the [open](http://man7.org/linux/man-pages/man2/open.2.html) system call. if you have written at least one `C` program, you should know that before we are able to read/write or execute other manipulations with a file we need to open it with the `open` function:
+[open](http://man7.org/linux/man-pages/man2/open.2.html) 시스템 호출에 대한 설명부터 시작하기로 결정했습니다. 적어도 하나의 `C` 프로그램을 작성했다면 파일로 다른 조작을 읽거나 쓰거나 실행하기 전에 `open` 함수로 파일을 열어야한다는 것을 알아야합니다.
 
 ```C
 #include <fcntl.h>
@@ -33,7 +33,7 @@ int main(int argc, char *argv) {
 }
 ```
 
-In this case, the open is the function from standard library, but not system call. The standard library will call related system call for us. The `open` call will return a [file descriptor](https://en.wikipedia.org/wiki/File_descriptor) which is just a unique number within our process which is associated with the opened file. Now as we opened a file and got file descriptor as result of `open` call, we may start to interact with this file. We can write into, read from it and etc. List of opened file by a process is available via [proc](https://en.wikipedia.org/wiki/Procfs) filesystem: 
+이 경우 열기는 표준 라이브러리의 함수이지만 시스템 호출은 아닙니다. 표준 라이브러리는 우리에게 관련 시스템 호출을 호출합니다. `open` 호출은 프로세스 내에서 열린 파일과 관련된 고유 번호 인 [file descriptor](https://en.wikipedia.org/wiki/File_descriptor)를 반환합니다. 이제 `open` 호출의 결과로 파일을 열고 파일 설명자를 얻었으므로 이 파일과 상호 작용을 시작할 수 있습니다. 프로세스에 의해 열린 파일의 목록은 [proc](https://en.wikipedia.org/wiki/Procfs) 파일 시스템을 통해 이용할 수 있습니다 :
 
 ```
 $ sudo ls /proc/1/fd/
@@ -42,16 +42,18 @@ $ sudo ls /proc/1/fd/
 1  11  13  15  19  20  22  24  26  28  3   31  33  35  37  39  40  42  44  46  48  5   51  54  57  59  60  62  65  7   9
 ```
 
-I am not going to describe more details about the `open` routine from the userspace view in this post, but mostly from the kernel side. if you are not very familiar with, you can get more info in the [man page](http://man7.org/linux/man-pages/man2/open.2.html).
+이 게시물의 사용자 공간보기에서 `오픈` 루틴에 대한 자세한 내용은 설명하지 않지만 대부분 커널 측에서 설명합니다. 잘 모른다면 [man page](http://man7.org/linux/man-pages/man2/open.2.html)에서 더 많은 정보를 얻을 수 있습니다.
 
-So let's start.
+이제 시작하겠습니다.
 
-Definition of the open system call
+오픈 시스템콜의 정의
 --------------------------------------------------------------------------------
 
-If you have read the [fourth part](https://github.com/0xAX/linux-insides/blob/master/SysCall/linux-syscall-4.md) of the [linux-insides](https://0xax.gitbooks.io/linux-insides/content/index.html) book, you should know that system calls are defined with the help of `SYSCALL_DEFINE` macro. So, the `open` system call is not exception.
+[linux-insides](https:0xax.gitbooks.io/linux-insides/content/index.html)의 [네 번째 파트](https://github.com/0xAX/linux-insides/blob/master/SysCall/linux-syscall-4.md)를 읽은 경우  책에서 시스템 호출은`SYSCALL_DEFINE` 매크로의 도움으로 정의된다는 것을 알아야합니다. 따라서 `open`시스템 콜도 예외는 아닙니다.
 
-Definition of the `open` system call is located in the [fs/open.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/open.c) source code file and looks pretty small for the first view:
+`open` 시스템 콜의 정의는 [fs/open.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/open.c) 소스 코드 파일에 있으며 꽤 작게 보입니다. 
+
+첫 번째보기 :
 
 ```C
 SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
@@ -63,40 +65,40 @@ SYSCALL_DEFINE3(open, const char __user *, filename, int, flags, umode_t, mode)
 }
 ```
 
-As you may guess, the `do_sys_open` function from the [same](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/open.c) source code file does the main job. But before this function will be called, let's consider the `if` clause from which the implementation of the `open` system call starts:
+짐작 하시겠지만, [동일](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/open.c) 소스 코드 파일의 `do_sys_open` 기능이 주요 작업을 수행합니다. 그러나 이 함수가 호출되기 전에, `open` 시스템 호출의 구현이 시작되는 `if` 절을 고려해 봅시다 :
 
 ```C
 if (force_o_largefile())
 	flags |= O_LARGEFILE;
 ```
 
-Here we apply the `O_LARGEFILE` flag to the flags which were passed to `open` system call in a case when the `force_o_largefile()` will return true.
-What is `O_LARGEFILE`? We may read this in the [man page](http://man7.org/linux/man-pages/man2/open.2.html) for the `open(2)` system call:
+여기서 우리는 `force_o_largefile()`이 true를 반환 할 경우에 `O_LARGEFILE` 플래그를 `open` 시스템 콜에 전달 된 플래그에 적용합니다.
+`O_LARGEFILE`은 무엇입니까? 우리는 `open(2)` 시스템 콜에 대한 [man page](http://man7.org/linux/man-pages/man2/open.2.html)에서 이것을 읽을 수 있습니다 :
 
 > O_LARGEFILE
 >
-> (LFS) Allow files whose sizes cannot be represented in an off_t (but can be represented in an off64_t) to be opened.
+> (LFS) 크기를 off_t로 표현할 수 없지만 off64_t로 표현할 수있는 파일을 열 수 있습니다.
 
-As we may read in the [GNU C Library Reference Manual](https://www.gnu.org/software/libc/manual/html_mono/libc.html#File-Position-Primitive):
+[GNU C Library Reference Manual](https://www.gnu.org/software/libc/manual/html_mono/libc.html#File-Position-Primitive)에서 읽을 수있는 바와 같이 :
 
 > off_t
 >
->    This is a signed integer type used to represent file sizes. 
->    In the GNU C Library, this type is no narrower than int.
->    If the source is compiled with _FILE_OFFSET_BITS == 64 this 
->    type is transparently replaced by off64_t.
+> 파일 크기를 나타내는 데 사용되는 부호있는 정수 유형입니다.
+> GNU C 라이브러리에서이 유형은 int보다 좁지 않습니다.
+> 소스가 _FILE_OFFSET_BITS == 64로 컴파일 된 경우
+> type은 투명하게 off64_t로 대체됩니다.
 
-and
+그리고
 
 > off64_t
 >
->    This type is used similar to off_t. The difference is that 
->    even on 32 bit machines, where the off_t type would have 32 bits,
->    off64_t has 64 bits and so is able to address files up to 2^63 bytes
->    in length. When compiling with _FILE_OFFSET_BITS == 64 this type 
->    is available under the name off_t.
+>이 유형은 off_t와 유사하게 사용됩니다. 차이점은
+> off_t 유형이 32 비트 인 32 비트 시스템에서도
+> off64_t는 64 비트이므로 최대 2 ^ 63 바이트의 파일을 처리 할 수 있습니다.
+> 길이. _FILE_OFFSET_BITS == 64로 컴파일 할 때이 유형
+>는 off_t라는 이름으로 제공됩니다.
 
-So it is not hard to guess that the `off_t`, `off64_t` and `O_LARGEFILE` are about a file size. In the case of the Linux kernel, the `O_LARGEFILE` is used  to disallow opening large files on 32bit systems if the caller didn't specify `O_LARGEFILE` flag during opening of a file. On 64bit systems we force on this flag in open system call. And the `force_o_largefile` macro from the [include/linux/fcntl.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/fcntl.h#L7) linux kernel header file confirms this:
+따라서 `off_t`, `off64_t` 및 `O_LARGEFILE`이 대략 파일 크기라고 추측하기 어렵지 않습니다. 리눅스 커널의 경우, `O_LARGEFILE`은 호출자가 파일을 여는 동안 `O_LARGEFILE` 플래그를 지정하지 않은 경우 32 비트 시스템에서 큰 파일을 열 수 없도록하는 데 사용됩니다. 64 비트 시스템에서는 오픈 시스템 콜에서 이 플래그를 사용합니다. 그리고 [include/linux/fcntl.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/fcntl.h#L7) 리눅스 커널 헤더 파일의 `force_o_largefile` 매크로는 이것을 확인합니다 :
 
 ```C
 #ifndef force_o_largefile
@@ -104,11 +106,11 @@ So it is not hard to guess that the `off_t`, `off64_t` and `O_LARGEFILE` are abo
 #endif
 ```
 
-This macro may be architecture-specific as for example for [IA-64](https://en.wikipedia.org/wiki/IA-64) architecture, but in our case the [x86_64](https://en.wikipedia.org/wiki/X86-64) does not provide definition of the `force_o_largefile` and it will be used from [include/linux/fcntl.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/fcntl.h#L7).
+이 매크로는 예를 들어 [IA-64](https://en.wikipedia.org/wiki/IA-64) 아키텍처와 같이 아키텍처에 따라 다를 수 있지만이 경우에는 [x86_64](https://en.wikipedia.org/wiki/X86-64)는 `force_o_largefile`의 정의를 제공하지 않으며 [include/linux/fcntl.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/fcntl.h#L7)에서 사용됩니다..
 
-So, as we may see the `force_o_largefile` is just a macro which expands to the `true` value in our case of [x86_64](https://en.wikipedia.org/wiki/X86-64) architecture. As we are considering 64-bit architecture, the `force_o_largefile` will be expanded to `true` and the `O_LARGEFILE` flag will be added to the set of flags which were passed to the `open` system call.
+따라서 우리가 알 수 있듯이 `force_o_largefile`은 [x86_64](https://en.wikipedia.org/wiki/X86-64) 아키텍처의 경우 `true` 값으로 확장되는 매크로 일뿐입니다. 64 비트 아키텍처를 고려할 때 `force_o_largefile`은 `true`로 확장되고 `O_LARGEFILE` 플래그는 `open` 시스템 콜에 전달 된 플래그 세트에 추가됩니다.
 
-Now as we considered meaning of the `O_LARGEFILE` flag and `force_o_largefile` macro, we can proceed to the consideration of the implementation of the `do_sys_open` function. As I wrote above, this function is defined in the [same](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/open.c) source code file and looks: 
+이제 우리는 `O_LARGEFILE` 플래그와 `force_o_largefile` 매크로의 의미를 고려 했으므로 `do_sys_open` 함수의 구현을 고려할 수 있습니다. 위에서 쓴 것처럼이 함수는 [동일](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/open.c) 소스 코드 파일에 정의되어 있으며 다음과 같습니다.
 
 ```C
 long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
@@ -140,19 +142,19 @@ long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 }
 ```
 
-Let's try to understand how the `do_sys_open` works step by step.
+이제 `do_sys_open`이 단계별로 작동하는 방식을 이해해봅시다
 
 open(2) flags
 --------------------------------------------------------------------------------
 
-As you know the `open` system call takes set of `flags` as second argument that control opening a file and `mode` as third argument that specifies permission the permissions of a file if it is created. The `do_sys_open` function starts from the call of the `build_open_flags` function which does some checks that set of the given flags is valid and handles different conditions of flags and mode.
+알다시피 `open` 시스템 호출은 파일 열기를 제어하는 두 번째 인수로`flags`를, 파일이 작성된 경우 파일의 권한을 지정하는 세 번째 인수로 mode를 사용합니다. `do_sys_open` 함수는`build_open_flags` 함수의 호출에서 시작하는데,이 함수는 주어진 플래그 세트가 유효한지 확인하고 플래그와 모드의 다른 조건을 처리합니다.
 
-Let's look at the implementation of the `build_open_flags`. This function is defined in the [same](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/open.c) kernel file and takes three arguments:
+`build_open_flags`의 구현을 살펴 봅시다. 이 함수는 [동일](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/open.c) 커널 파일에 정의되어 있으며 세 가지 인수를 사용합니다.
 
-* flags - flags that control opening of a file;
-* mode - permissions for newly created file;
+* flags - 파일 열기를 제어하는 플래그.
+* mode - 새로 작성된 파일에 대한 권한
 
-The last argument - `op` is represented with the `open_flags` structure:
+마지막 인수 인 `op`는 `open_flags` 구조체로 표현됩니다 :
 
 ```C
 struct open_flags {
@@ -164,28 +166,28 @@ struct open_flags {
 };
 ```
 
-which is defined in the [fs/internal.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/internal.h#L99) header file and as we may see it holds information about flags and access mode for internal kernel purposes. As you already may guess the main goal of the `build_open_flags` function is to fill an instance of this structure.
+이는 [fs/internal.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/internal.h#L99) 헤더 파일에 정의되어 있으며 플래그 및 내부 커널 목적을 위한 액세스 모입니다. 이미 알고 있듯이 `build_open_flags` 함수의 주요 목표는 이 구조체의 인스턴스를 채우는 것입니다.
 
-Implementation of the `build_open_flags` function starts from the definition of local variables and one of them is:
+`build_open_flags` 함수의 구현은 지역 변수의 정의에서 시작하며 그중 하나는 다음과 같습니다.
 
 ```C
 int acc_mode = ACC_MODE(flags);
 ```
 
-This local variable represents access mode and its initial value will be equal to the value of expanded `ACC_MODE` macro. This macro is defined in the [include/linux/fs.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/fs.h) and looks pretty interesting:
+이 지역 변수는 액세스 모드를 나타내며 초기 값은 확장 된 `ACC_MODE` 매크로의 값과 같습니다. 이 매크로는 [include/linux/ fs.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/fs.h)에 정의되어 있으며 매우 흥미로워 보입니다.
 
 ```C
 #define ACC_MODE(x) ("\004\002\006\006"[(x)&O_ACCMODE])
 #define O_ACCMODE   00000003
 ```
 
-The `"\004\002\006\006"` is an array of four chars:
+`"\004\002\006\006"`는 4 개의 문자로 구성된 배열입니다.
 
 ```
 "\004\002\006\006" == {'\004', '\002', '\006', '\006'}
 ```
 
-So, the `ACC_MODE` macro just expands to the accession to this array by `[(x) & O_ACCMODE]` index. As we just saw, the `O_ACCMODE` is `00000003`. By applying `x & O_ACCMODE` we will take the two least significant bits which are represents `read`, `write` or `read/write` access modes:
+따라서, `ACC_MODE` 매크로는 `[(x) & O_ACCMODE]` 인덱스에 의해 이 배열에 대한 접근으로 확장됩니다. 방금 보았 듯이 `O_ACCMODE`는 `00000003`입니다. `x & O_ACCMODE`를 적용하면 `읽기`, `쓰기`또는 `읽기/쓰기` 액세스 모드를 나타내는 최하위 비트 2 개를 가져옵니다.
 
 ```C
 #define O_RDONLY        00000000
@@ -193,9 +195,9 @@ So, the `ACC_MODE` macro just expands to the accession to this array by `[(x) & 
 #define O_RDWR          00000002
 ```
 
-After getting value from the array by the calculated index, the `ACC_MODE` will be expanded to access mode mask of a file which will hold `MAY_WRITE`, `MAY_READ` and other information.
+계산 된 인덱스에 의해 배열에서 값을 얻은 후, `ACC_MODE`는 `MAY_WRITE`, `MAY_READ`및 기타 정보를 보유 할 파일의 액세스 모드 마스크로 확장됩니다.
 
-We may see following condition after we have calculated initial access mode:
+초기 액세스 모드를 계산 한 후 다음과 같은 상태가 나타날 수 있습니다.
 
 ```C
 if (flags & (O_CREAT | __O_TMPFILE))
