@@ -36,7 +36,7 @@ DECLARE_PER_CPU(int, __preempt_count);
 #define preempt_count_add(val)  __preempt_count_add(val)
 ```
 
-where `preempt_count_add` calls the `raw_cpu_add_4` macro which adds `1` to the given `percpu` variable (`__preempt_count`) in our case (more about `precpu` variables you can read in the part about [Per-CPU variables](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html)). Ok, we increased `__preempt_count` and the next step we can see the call of the `barrier` macro in the both macros. The `barrier` macro inserts an optimization barrier. In the processors with `x86_64` architecture independent memory access operations can be performed in any order. That's why we need the opportunity to point compiler and processor on compliance of order. This mechanism is memory barrier. Let's consider a simple example:
+여기서 preempt_count_add는 `raw_cpu_add_4` 매크로를 호출하여 우리의 경우 주어진 `percpu` 변수 (`__preempt_count`)에 `1`을 추가합니다. (`precpu` 변수에 대한 자세한 정보는 [CPU 단위 변수](https://0xax.gitbooks.io/linux-insides/content/Concepts/linux-cpu-1.html)에서 읽을 수 있습니다) . Ok, we increased `__preempt_count` and the next step we can see the call of the `barrier` macro in the both macros. The `barrier` macro inserts an optimization barrier. In the processors with `x86_64` architecture independent memory access operations can be performed in any order. That's why we need the opportunity to point compiler and processor on compliance of order. This mechanism is memory barrier. Let's consider a simple example:
 
 ```C
 preempt_disable();

@@ -206,30 +206,31 @@ else
 	op->mode = 0;
 ```
 
-Here we reset permissions in `open_flags` instance if a opened file wasn't temporary and wasn't open for creation. This is because:
+열린 파일이 임시 파일이 아니고 생성을 위해 열리지 않은 경우 `open_flags` 인스턴스의 권한을 재설정합니다. 이 때문입니다:
 
-> if  neither O_CREAT nor O_TMPFILE is specified, then mode is ignored.
+> O_CREAT 또는 O_TMPFILE을 지정하지 않으면 모드가 무시됩니다.
 
-In other case if `O_CREAT` or `O_TMPFILE` were passed we canonicalize it to a regular file because a directory should be created with the [opendir](http://man7.org/linux/man-pages/man3/opendir.3.html) system call.
+다른 경우에는`O_CREAT` 또는`O_TMPFILE`이 전달 된 경우 [opendir](http://man7.org/linux/man-pages/man3/opendir3.html) 시스템콜로 디렉토리를 작성해야하기 때문에 일반 파일로 정규화 할 수 있습니다.
 
-At the next step we check that a file is not tried to be opened via [fanotify](http://man7.org/linux/man-pages/man7/fanotify.7.html) and without the `O_CLOEXEC` flag:
+
+다음 단계에서 우리는 [fanotify](http://man7.org/linux/man-pages/man7/fanotify.7.html)를 통해 그리고 `O_CLOEXEC` 플래그없이 파일을 열려고 시도하지 않았는지 확인합니다 :
 
 ```C
 flags &= ~FMODE_NONOTIFY & ~O_CLOEXEC;
 ```
 
-We do this to not leak a [file descriptor](https://en.wikipedia.org/wiki/File_descriptor). By default, the new file descriptor is set to remain open across an `execve` system call, but the `open` system call supports `O_CLOEXEC` flag that can be used to change this default behaviour. So we do this to prevent leaking of a file descriptor when one thread opens a file to set `O_CLOEXEC` flag and in the same time the second process does a [fork](https://en.wikipedia.org/wiki/Fork_\(system_call\)) + [execve](https://en.wikipedia.org/wiki/Exec_\(system_call\)) and as you may remember that child will have copies of the parent's set of open file descriptors.
+우리는 [파일 디스크립터](https://en.wikipedia.org/wiki/File_descriptor)를 누설하지 않기 위해 이렇게합니다. 기본적으로, 새로운 파일 디스크립터는 `execve` 시스템 호출에서 열린 채로 유지되도록 설정되어 있지만, `open` 시스템 콜은 이 기본 동작을 변경하는 데 사용할  수 있는 `O_CLOEXEC` 플래그를 지원합니다. 따라서 우리는 하나의 스레드가 파일을 열어 `O_CLOEXEC` 플래그를 설정하고 동시에 두 번째 프로세스가 [fork](https://en.wikipedia.org/wiki/Fork_\(system_call\)) + [execve](https://en.wikipedia.org/wiki/Exec_\(system_call\))를 수행할 때 파일 디스크립터의 누출을 방지하기 위해 이를 수행합니다. 그리고 자식은 부모의 열린 파일 디스크립터 세트의 사본을 갖게 될 것입니다.
 
-At the next step we check that if our flags contains `O_SYNC` flag, we apply `O_DSYNC` flag too:
+다음 단계에서 플래그에 `O_SYNC` 플래그가 포함되어 있으면 `O_DSYNC` 플래그도 적용되는지 확인합니다.
 
 ```
 if (flags & __O_SYNC)
 	flags |= O_DSYNC;
 ```
 
-The `O_SYNC` flag guarantees that the any write call will not return before all data has been transferred to the disk. The `O_DSYNC` is like `O_SYNC` except that there is no requirement to wait for any metadata (like `atime`, `mtime` and etc.) changes will be written. We apply `O_DSYNC` in a case of `__O_SYNC` because it is implemented as `__O_SYNC|O_DSYNC` in the Linux kernel.
+`O_SYNC` 플래그는 모든 데이터가 디스크로 전송되기 전에 모든 쓰기 호출이 반환되지 않도록합니다. `O_DSYNC`는 메타 데이터 (예 :`atime` , `mtime` 등)가 변경 될 때까지 기다릴 필요가 없다는 점을 제외하면 `O_SYNC`와 같습니다. 우리는 `O_DSYNC`를 `__O_SYNC`의 경우 리눅스 커널에서`__O_SYNC | O_DSYNC`로 구현하기 때문에 적용합니다.
 
-After this we must be sure that if a user wants to create temporary file, the flags should contain `O_TMPFILE_MASK` or in other words it should contain or `O_CREAT` or `O_TMPFILE` or both and also it should be writeable:
+그런 다음 사용자가 임시 파일을 만들려면 플래그에 'O_TMPFILE_MASK'가 포함되어야하거나 다른 말로 `O_CREAT`또는 `O_TMPFILE`또는 둘 다 포함해야하며 쓰기 가능해야합니다.
 
 ```C
 if (flags & __O_TMPFILE) {
@@ -243,22 +244,22 @@ if (flags & __O_TMPFILE) {
 }
 ```
 
-as it is written in in the manual page:
+매뉴얼 페이지에 기록 된대로 :
 
-> O_TMPFILE  must  be  specified  with one of O_RDWR or O_WRONLY
+> O_TMPFILE은 O_RDWR 또는 O_WRONLY 중 하나로 지정해야합니다.
 
-If we didn't pass `O_TMPFILE` for creation of a temporary file, we check the `O_PATH` flag at the next condition. The `O_PATH` flag allows us to obtain a file descriptor that may be used for two following purposes:
+임시 파일 생성을 위해 `O_TMPFILE`을 전달하지 않으면 다음 조건에서 `O_PATH` 플래그를 확인합니다. `O_PATH` 플래그를 사용하면 다음 두 가지 목적으로 사용될 수있는 파일 디스크립터를 얻을 수 있습니다.
 
-* to indicate a location in the filesystem tree;
-* to perform operations that act purely at the file descriptor level.
+* 파일 시스템 트리의 위치를 나타냅니다.
+* 파일 설명자 수준에서 순수하게 작동하는 작업을 수행합니다.
 
-So, in this case the file itself is not opened, but operations like `dup`, `fcntl` and other can be used. So, if all file content related operations like `read`, `write` and other are not permitted, only `O_DIRECTORY | O_NOFOLLOW | O_PATH` flags can be used. We have finished with flags for this moment in the `build_open_flags` for this moment and we may fill our `open_flags->open_flag` with them:
+따라서이 경우 파일 자체는 열리지 않지만 `dup`, `fcntl` 등의 작업을 사용할 수 있습니다. 따라서 `read`, `write` 및 기타와 같은 모든 파일 내용 관련 작업이 허용되지 않으면 `O_DIRECTORY | O_NOFOLLOW | O_PATH` 플래그를 사용할 수 있습니다. 우리는 이 순간에 대해 `build_open_flags`에서 이 순간에 대한 플래그로 끝났고, 우리는 `open_flags-> open_flag`를 그것들로 채울 수 있습니다 :
 
 ```C
 op->open_flag = flags;
 ```
 
-Now we have filled `open_flag` field which represents flags that will control opening of a file and `mode` that will represent `umask` of a new file if we open file for creation. There are still to fill last flags in the our `open_flags` structure. The next is `op->acc_mode` which represents access mode to a opened file. We already filled the `acc_mode` local variable with the initial value at the beginning of the `build_open_flags` and now we check last two flags related to access mode:
+이제 파일 열기를 제어하는 플래그를 나타내는 `open_flag` 필드의 생성을 위해 파일을 열면 새 파일의 `umask`를 나타내는 `mode`가 채워져 있습니다. 우리의 `open_flags` 구조에서 마지막 플래그를 채워야합니다. 다음은 열린 파일에 대한 액세스 모드를 나타내는 `op-> acc_mode`입니다. `acc_mode` 지역 변수를 `build_open_flags` 시작 부분의 초기 값으로 이미 채웠으며 이제 액세스 모드와 관련된 마지막 두 플래그를 확인합니다.
 
 ```C
 if (flags & O_TRUNC)
@@ -268,15 +269,15 @@ if (flags & O_APPEND)
 op->acc_mode = acc_mode;
 ```
 
-These flags are - `O_TRUNC` that will truncate an opened file to length `0` if it existed before we open it and the `O_APPEND` flag allows to open a file in `append mode`. So the opened file will be appended during write but not overwritten.
+이 플래그는 - `O_TRUNC`로, 열린 파일이 존재하기 전에 열린 파일의 길이를 0으로 자르고, `O_APPEND` 플래그는 파일을 추가 모드에서 열 수 있도록 합니다. 따라서 열린 파일은 쓰기 중에 추가되지만 덮어 쓰지는 않습니다.
 
-The next field of the `open_flags` structure is - `intent`. It allows us to know about our intention or in other words what do we really want to do with file, open it, create, rename it or something else. So we set it to zero if our flags contains the `O_PATH` flag as we can't do anything related to a file content with this flag:
+`open_flags` 구조체의 다음 필드는 `intent`입니다. 이를 통해 우리의 의도 또는 다른 말로 파일과 관련하여 실제로 하고 싶은 작업, 파일 열기, 생성, 이름 변경 등을 알 수 있습니다. 따라서 플래그에 `O_PATH` 플래그가 포함되어 있으면 이 플래그로 인해 파일 내용과 관련된 작업을 수행 할 수 없으므로 이를 0으로 설정합니다.
 
 ```C
 op->intent = flags & O_PATH ? 0 : LOOKUP_OPEN;
 ```
 
-or just to `LOOKUP_OPEN` intention. Additionally we set `LOOKUP_CREATE` intention if we want to create new file and to be sure that a file didn't exist before with `O_EXCL` flag:
+또는 단지 `LOOKUP_OPEN` 의도로. 또한 새 파일을 만들고 `O_EXCL` 플래그를 사용하여 파일이 존재하지 않도록 하려면 `LOOKUP_CREATE` 의도를 설정합니다.
 
 ```C
 if (flags & O_CREAT) {
@@ -286,7 +287,7 @@ if (flags & O_CREAT) {
 }
 ```
 
-The last flag of the `open_flags` structure is the `lookup_flags`:
+`open_flags` 구조의 마지막 플래그는`lookup_flags`입니다.
 
 ```C
 if (flags & O_DIRECTORY)
@@ -298,12 +299,12 @@ op->lookup_flags = lookup_flags;
 return 0;
 ```
 
-We fill it with `LOOKUP_DIRECTORY` if we want to open a directory and `LOOKUP_FOLLOW` if we don't want to follow (open) [symlink](https://en.wikipedia.org/wiki/Symbolic_link). That's all. It is the end of the `build_open_flags` function. The `open_flags` structure is filled with modes and flags for a file opening and we can return back to the `do_sys_open`.
+디렉토리를 열려면 `LOOKUP_DIRECTORY`로 채우고 (열기) [symlink](https://en.wikipedia.org/wiki/Symbolic_link)를 따르지 않으려면 `LOOKUP_DIRECTORY`로 채우고 `LOOKUP_FOLLOW`로 채 웁니다. 이것이 `build_open_flags` 함수의 끝입니다. `open_flags` 구조는 파일 열기를위한 모드와 플래그로 채워져 있으며 우리는 `do_sys_open`으로 되돌아 갈 수 있습니다.
 
-Actual opening of a file
+파일의 실제 열기
 --------------------------------------------------------------------------------
 
-At the next step after `build_open_flags` function is finished and we have formed flags and modes for our file we should get the `filename` structure with the help of the `getname` function by name of a file which was passed to the `open` system call:
+`build_open_flags` 함수가 완료된 후 다음 단계에서 우리는 파일에 플래그와 모드를 형성했습니다. 우리는 오픈 시스템 콜에 전달 된 파일 이름을 이용해 `getname` 함수의 도움으로 `filename` 구조체를 얻어야합니다.
 
 ```C
 tmp = getname(filename);
@@ -311,7 +312,7 @@ if (IS_ERR(tmp))
 	return PTR_ERR(tmp);
 ```
 
-The `getname` function is defined in the [fs/namei.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/namei.c) source code file and looks:
+`getname` 함수는 [fs/namei.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/namei.c) 소스 코드 파일에 정의되어 있으며 다음과 같습니다.
 
 ```C
 struct filename *
@@ -321,23 +322,23 @@ getname(const char __user * filename)
 }
 ```
 
-So, it just calls the `getname_flags` function and returns its result. The main goal of the `getname_flags` function is to copy a file path given from userland to kernel space. The `filename` structure is defined in the [include/linux/fs.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/fs.h) linux kernel header file and contains following fields:
+따라서 `getget_flags` 함수를 호출하고 결과를 반환합니다. `getname_flags` 함수의 주요 목표는 사용자 영역에서 커널 공간으로 주어진 파일 경로를 복사하는 것입니다. `filename` 구조는 [include/linux/fs.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/fs.h) 리눅스 커널 헤더 파일에 정의되어 있으며 다음을 포함합니다. 
 
-* name - pointer to a file path in kernel space;
-* uptr - original pointer from userland;
-* aname - filename from [audit](https://linux.die.net/man/8/auditd) context;
-* refcnt - reference counter;
-* iname - a filename in a case when it will be less than `PATH_MAX`.
+* name - 커널 공간에서 파일 경로를 가리키는 포인터
+* uptr - 사용자 영역의 원래 포인터;
+* 이름 - [audit](https://linux.die.net/man/8/auditd) 컨텍스트의 파일 이름;
+* refcnt - 기준 카운터;
+* iname - `PATH_MAX`보다 작은 경우 파일 이름.
 
-As I already wrote above, the main goal of the `getname_flags` function is to copy name of a file which was passed to the `open` system call from user space to kernel space with the strncpy_from_user function. The next step after a filename will be copied to kernel space is getting of new non-busy file descriptor:
+위에서 이미 쓴 것처럼 `getname_flags` 함수의 주요 목표는 strncpy_from_user 함수를 사용하여 사용자 공간에서 커널 공간으로 `open` 시스템 호출에 전달 된 파일의 이름을 복사하는 것입니다. 파일 이름이 커널 공간으로 복사 된 다음 단계는 새로운 비 사용 파일 디스크립터를 얻는 것입니다.
 
 ```C
 fd = get_unused_fd_flags(flags);
 ```
 
-The `get_unused_fd_flags` function takes table of open files of the current process, minimum (`0`) and maximum (`RLIMIT_NOFILE`) possible number of a file descriptor in the system and flags that we have passed to the `open` system call and allocates file descriptor and mark it busy in the file descriptor table of the current process. The `get_unused_fd_flags` function sets or clears the `O_CLOEXEC` flag depends on its state in the passed flags.
+`get_unused_fd_flags` 함수는 현재 프로세스의 열린 파일 테이블, 시스템에서 파일 설명 자의 최소 (`0`) 및 최대 (`RLIMIT_NOFILE`) 가능한 수와 `open` 시스템 콜에 전달한 플래그를 취합니다. 파일 디스크립터를 할당하고 현재 프로세스의 파일 디스크립터 테이블에서 사용 중으로 표시합니다. `get_unused_fd_flags` 함수는 전달 된 플래그의 상태에 따라 O_CLOEXEC 플래그를 설정하거나 지웁니다.
 
-The last and main step in the `do_sys_open` is the `do_filp_open` function:
+`do_sys_open`의 마지막 단계는`do_filp_open` 함수입니다.
 
 ```C
 struct file *f = do_filp_open(dfd, tmp, &op);
@@ -351,9 +352,9 @@ if (IS_ERR(f)) {
 }
 ```
 
-The main goal of this function is to resolve given path name into `file` structure which represents an opened file of a process. If something going wrong and execution of the `do_filp_open` function will be failed, we should free new file descriptor with the `put_unused_fd` or in other way the `file` structure returned by the `do_filp_open` will be stored in the file descriptor table of the current process.
+이 함수의 주요 목표는 주어진 경로 이름을 프로세스의 열린 파일을 나타내는 `file` 구조체로 해석하는 것입니다. 문제가 발생하여 `do_filp_open` 함수의 실행이 실패하면 `put_unused_fd`를 사용하여 새 파일 디스크립터를 해제하거나 다른 방법으로 `do_filp_open`에서 리턴 한 현재 프로세스의 `file` 구조체가 파일 디스크립터 테이블에 저장됩니다.
 
-Now let's take a short look at the implementation of the `do_filp_open` function. This function is defined in the [fs/namei.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/namei.c) linux kernel source code file and starts from initialization of the `nameidata` structure. This structure will provide a link to a file [inode](https://en.wikipedia.org/wiki/Inode). Actually this is one of the main point of the `do_filp_open` function to acquire an `inode` by the filename given to `open` system call. After the `nameidata` structure will be initialized, the `path_openat` function will be called:
+이제 `do_filp_open` 함수의 구현을 간단히 살펴 봅시다. 이 함수는 [fs/namei.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/namei.c) 리눅스 커널 소스 코드 파일에 정의되어 있으며 `nameidata` 구조체의 초기화부터 시작합니다 이 구조체는 파일 [inode](https://en.wikipedia.org/wiki/Inode)에 대한 링크를 제공합니다. 실제로 이것은 `open` 시스템 콜에 주어진 파일 이름으로 `inode`를 얻는 `do_filp_open` 함수의 요점 중 하나입니다. `nameidata` 구조가 초기화되면 `path_openat` 함수가 호출됩니다 :
 
 ```C
 filp = path_openat(&nd, op, flags | LOOKUP_RCU);
@@ -364,26 +365,26 @@ if (unlikely(filp == ERR_PTR(-ESTALE)))
 	filp = path_openat(&nd, op, flags | LOOKUP_REVAL);
 ```
 
-Note that it is called three times. Actually, the Linux kernel will open the file in [RCU](https://www.kernel.org/doc/Documentation/RCU/whatisRCU.txt) mode. This is the most efficient way to open a file. If this try will be failed, the kernel enters the normal mode. The third call is relatively rare, only in the [nfs](https://en.wikipedia.org/wiki/Network_File_System) file system is likely to be used. The `path_openat` function executes `path lookup` or in other words it tries to find a `dentry` (what the Linux kernel uses to keep track of the hierarchy of files in directories) corresponding to a path.
+세 번 호출된다는 것을 기억하세요. 실제로 Linux 커널은 [RCU](https://www.kernel.org/doc/Documentation/RCU/whatisRCU.txt) 모드에서 파일을 엽니다. 이것이 파일을 여는 가장 효율적인 방법입니다. 이 시도가 실패하면 커널은 일반 모드로 들어갑니다. 세 번째 호출은 상대적으로 드물며 [nfs](https://en.wikipedia.org/wiki/Network_File_System) 파일 시스템에서만 사용됩니다. `path_openat` 함수는`path lookup`을 실행하거나, 즉 경로에 해당하는 `dentry` (리눅스 커널이 디렉토리의 파일 계층을 추적하기 위해 사용하는 것)를 찾으려고 시도합니다.
 
-The `path_openat` function starts from the call of the `get_empty_flip()` function that allocates a new `file` structure with some additional checks like do we exceed amount of opened files in the system or not and etc. After we have got allocated new `file` structure we call the `do_tmpfile` or `do_o_path` functions in a case if we have passed `O_TMPFILE | O_CREATE` or `O_PATH` flags during call of the `open` system call. These both cases are quite specific, so let's consider quite usual case when we want to open already existed file and want to read/write from/to it.
+`path_openat` 함수는 시스템에서 열린 파일의 양을 초과하는지 여부 등과 같은 몇 가지 추가 검사와 함께 새로운 `file` 구조체를 할당하는 `get_empty_flip ()` 함수의 호출에서 시작합니다.우리가 새로운 `file` 구조체를 할당 한 후에 우리는 `open` 시스템 콜을 호출하는 동안 `O_TMPFILE |O_CREATE` 또는 `O_PATH` 플래그를 통과 한 경우에 `do_tmpfile` 또는`do_o_path` 함수를 호출합니다. 이 두 경우는 매우 구체적이므로 이미 존재하는 파일을 열고 파일에서 읽고 쓰기를 원할 때는 일반적인 경우를 고려합니다.
 
-In this case the `path_init` function will be called. This function performs some preporatory work before actual path lookup. This includes search of start position of path traversal and its metadata like `inode` of the path, `dentry inode` and etc. This can be `root` directory - `/` or current directory as in our case, because we use `AT_CWD` as starting point (see call of the `do_sys_open` at the beginning of the post).
+이 경우 `path_init` 함수가 호출됩니다. 이 기능은 실제 경로 조회 전에 준비 작업을 수행합니다. 여기에는 경로 탐색의 시작 위치 검색 및 경로의 `inode`, `dentry inode` 등과 같은 메타 데이터가 포함됩니다. 이는 `root` 디렉토리 - `/` 또는 현재 디렉토리가 될 수 있습니다. `AT_CWD`를 시작점으로합니다 (포스트 시작 부분의`do_sys_open` 호출 참조).
 
-The next step after the `path_init` is the [loop](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/namei.c#L3457) which executes the `link_path_walk` and `do_last`. The first function executes name resolution or in other words this function starts process of walking along a given path. It handles everything step by step except the last component of a file path. This handling includes checking of a permissions and getting a file component. As a file component is gotten, it is passed to `walk_component` that updates current directory entry from the `dcache` or asks underlying filesystem. This repeats before all path's components will not be handled in such way. After the `link_path_walk` will be executed, the `do_last` function will populate a `file` structure based on the result of the `link_path_walk`. As we reached last component of the given file path the `vfs_open` function from the `do_last` will be called.
+`path_init` 다음의 다음 단계는 `link_path_walk`와 `do_last`를 실행하는 [loop](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/namei.c#L3457)입니다. 첫 번째 함수는 이름 확인을 실행합니다. 즉,이 함수는 주어진 경로를 따라 걷는 과정을 시작합니다. 파일 경로의 마지막 구성 요소를 제외한 모든 단계를 단계별로 처리합니다. 이 처리에는 권한 확인 및 파일 구성 요소 가져 오기가 포함됩니다. 파일 구성 요소를 가져 오면 `walk_component`로 전달되어 `dcache`에서 현재 디렉토리 항목을 업데이트하거나 기본 파일 시스템을 요청합니다. 모든 경로의 구성 요소가 이러한 방식으로 처리되지 않기 전에이 과정이 반복됩니다. `link_path_walk`가 실행 된 후 `do_last` 함수는 `link_path_walk`의 결과에 따라 `file` 구조를 채웁니다. 주어진 파일 경로의 마지막 구성 요소에 도달하면 `do_last`의 `vfs_open` 함수가 호출됩니다.
 
-This function is defined in the [fs/open.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/open.c) linux kernel source code file and the main goal of this function is to call an `open` operation of underlying filesystem.
+이 함수는 [fs/open.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/fs/open.c) 리눅스 커널 소스 코드 파일에 정의되어 있으며 이 함수의 주요 목표는 기본 파일 시스템의 `open` 연산을 호출입니다.
 
-That's all for now. We didn't consider **full** implementation of the `open` system call. We skip some parts like handling case when we want to open a file from other filesystem with different mount point, resolving symlinks and etc., but it should be not so hard to follow this stuff. This stuff does not included in **generic** implementation of open system call and depends on underlying filesystem. If you are interested in, you may lookup the `file_operations.open` callback function for a certain [filesystem](https://github.com/torvalds/linux/tree/master/fs).
+지금은 여기까지입니다. 우리는 `open` 시스템 호출의 **전체** 구현을 고려하지 않았습니다. 마운트 포인트가 다른 다른 파일 시스템에서 파일을 열고 심볼릭 링크를 해결하는 등의 처리 방법과 같은 일부 부분은 생략하지만 이 내용을 따르는 것이 어렵지 않아야합니다. 이 내용은 개방 시스템 호출의 **일반** 구현에는 포함되어 있지 않으며 기본 파일 시스템에 따라 다릅니다. 관심이 있다면 특정 [filesystem](https://github.com/torvalds/linux/tree/master/fs)에 대한 `file_operations.open` 콜백 함수를 찾아 볼 수 있습니다.
 
-Conclusion
+결론
 --------------------------------------------------------------------------------
 
-This is the end of the fifth part of the implementation of different system calls in the Linux kernel. If you have questions or suggestions, ping me on twitter [0xAX](https://twitter.com/0xAX), drop me an [email](anotherworldofworld@gmail.com), or just create an [issue](https://github.com/0xAX/linux-internals/issues/new). In the next part, we will continue to dive into system calls in the Linux kernel and see the implementation of the [read](http://man7.org/linux/man-pages/man2/read.2.html) system call.
+이것은 Linux 커널에서 다른 시스템 콜을 구현하는 다섯 번째 부분의 끝입니다. 질문이나 제안 사항이 있으면 Twitter [0xAX](https://twitter.com/0xAX)에 핑(Ping)을 보내거나 [email](anotherworldofworld@gmail.com)을 보내거나 [issue](https://github.com/0xAX/linux-internals/issues/new)를 만드세요. 다음 부분에서는 계속해서 Linux 커널에서 시스템 호출을 살펴보고 [read](http://man7.org/linux/man-pages/man2/read.2.html) 시스템의 구현을 확인합니다.
 
 **Please note that English is not my first language and I am really sorry for any inconvenience. If you find any mistakes please send me PR to [linux-insides](https://github.com/0xAX/linux-internals).**
 
-Links
+링크
 --------------------------------------------------------------------------------
 
 * [system call](https://en.wikipedia.org/wiki/System_call)
