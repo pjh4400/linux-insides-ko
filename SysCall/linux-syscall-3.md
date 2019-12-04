@@ -266,7 +266,7 @@ static int __init init_vdso(void)
 #endif
 ```
 
-두 함수 모두 `vdso_image` 구조체를 초기화합니다. 이 구조체는 생성된 두 소스 코드 파일인 arch/x86/entry/vdso/vdso-image-64.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/entry/vdso/vdso-image-64.c)와 [arch/x86/entry/vdso/vdso-image-32.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/entry/vdso/vdso-image-32.c)에 정의되어 있습니다. 다른 소스 코드 파일에서 [vdso2c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/entry/vdso/vdso2c.c) 프로그램에 의해 생성 된 이러한 소스 코드 파일들은 `int 0x80`, `sysenter` 등과 같은 시스템 콜을 호출하는 다른 접근 방식을 보여줍니다. 이미지의 전체 세트는 커널 설정에 따라 다릅니다.
+두 함수 모두 `vdso_image` 구조체를 초기화합니다. 이 구조체는 생성된 두 소스 코드 파일인 [arch/x86/entry/vdso/vdso-image-64.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/entry/vdso/vdso-image-64.c)와 [arch/x86/entry/vdso/vdso-image-32.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/entry/vdso/vdso-image-32.c)에 정의되어 있습니다. 다른 소스 코드 파일에서 [vdso2c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/entry/vdso/vdso2c.c) 프로그램에 의해 생성 된 이러한 소스 코드 파일들은 `int 0x80`, `sysenter` 등과 같은 시스템 콜을 호출하는 다른 접근 방식을 보여줍니다. 이미지의 전체 세트는 커널 설정에 따라 다릅니다.
 
 예를 들어 `x86_64` Linux 커널의 경우 `vdso_image_64`가 포함됩니다. :
 
