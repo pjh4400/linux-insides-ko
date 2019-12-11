@@ -169,7 +169,7 @@ $ cat /proc/interrupts
 
 'irq_data' 구조체는 칩 기능으로 전달 된 irq 당 칩 데이터 세트를 나타냅니다. 여기에는 칩 레지스터에 엑세스하기 위해 사전 계산 된 비트 마스크 인 `mask`,인터럽트 번호인 `irq`, 하드웨어 인터럽트 번호인 `hwirq`, 인터럽트 도메인 칩 하위 레벨 인터럽트 하드웨어 액세스 등이 포함됩니다.
 
-이 명령은 `CONFIG_X86_64`와 커널 구성 옵션인 `CONFIG_X86_LOCAL_APIC`에 따라 [arch/x86/kernel/apic/apic.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/apic/apic.c)에서 `init_bsp_APIC` 함수를 호출합니다. :
+이 명령은 `CONFIG_X86_64`와 커널 설정 옵션인 `CONFIG_X86_LOCAL_APIC`에 따라 [arch/x86/kernel/apic/apic.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/apic/apic.c)에서 `init_bsp_APIC` 함수를 호출합니다. :
 
 ```C
 #if defined(CONFIG_X86_64) || defined(CONFIG_X86_LOCAL_APIC)
@@ -408,13 +408,13 @@ if (!acpi_ioapic && !of_ioapic && nr_legacy_irqs())
 	setup_irq(2, &irq2);
 ```
 
-우선 조건을 살펴 봅시다. `acpi_ioapic` 변수는 [I/O APIC](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller#I.2FO_APICs)의 유무를 나타냅니다. 이는 [arch/x86/kernel/acpi/boot.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/acpi/boot.c)에 정의되어 있습니다. 이 변수는 `Multiple APIC Description Table`을 처리하는동안 호출 된 `acpi_set_irq_model_ioapic` 함수에 설정되어 있습니다. 이것은 [arch/x86/kernel/setup.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/setup.c)에서 아키텍처 특정 항목을 초기화하는 동안 발생합니다(자세한 내용은 [APIC](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller)에 대해 다루는 다른 챕터에서 알 수 있습니다). `acpi_ioapic` 변수의 값은 `CONFIG_ACPI`와  Linux 커널 구성 옵션 `CONFIG_X86_LOCAL_APIC`에 따라 다릅니다. 이 옵션을 설정하지 않으면이 변수는 0이됩니다. :
+우선 조건을 살펴 봅시다. `acpi_ioapic` 변수는 [I/O APIC](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller#I.2FO_APICs)의 유무를 나타냅니다. 이는 [arch/x86/kernel/acpi/boot.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/acpi/boot.c)에 정의되어 있습니다. 이 변수는 `Multiple APIC Description Table`을 처리하는동안 호출 된 `acpi_set_irq_model_ioapic` 함수에 설정되어 있습니다. 이것은 [arch/x86/kernel/setup.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/setup.c)에서 아키텍처 특정 항목을 초기화하는 동안 발생합니다(자세한 내용은 [APIC](https://en.wikipedia.org/wiki/Advanced_Programmable_Interrupt_Controller)에 대해 다루는 다른 챕터에서 알 수 있습니다). `acpi_ioapic` 변수의 값은 `CONFIG_ACPI`와  Linux 커널 설정 옵션 `CONFIG_X86_LOCAL_APIC`에 따라 다릅니다. 이 옵션을 설정하지 않으면이 변수는 0이됩니다. :
 
 ```C
 #define acpi_ioapic 0
 ```
 
-두 번째 조건인 `!of_ioapic && nr_legacy_irqs()` 는 [Open Firmware](https://en.wikipedia.org/wiki/Open_Firmware) `I/O APIC`와 레거시 인터럽트 컨트롤러를 사용하지 않는지 확인합니다. 우리는 이미 `nr_legacy_irqs`에 대해 알고 있습니다. 두 번째는 [arch/x86/kernel/devicetree.c]에 정의 된 `of_ioapic` 변수이며, [devicetree](https://en.wikipedia.org/wiki/Device_tree)에서 `APICs` 에 대한 정보를 빌드하는 `dtb_ioapic_setup` 함수에서 초기화됩니다. `of_ioapic` 변수는 Linux 커널 구성 옵션 `CONFIG_OF` 에 따라 다릅니다. 이 옵션을 설정하지 않으면 `of_ioapic`의 값도 0이 됩니다 :
+두 번째 조건인 `!of_ioapic && nr_legacy_irqs()` 는 [Open Firmware](https://en.wikipedia.org/wiki/Open_Firmware) `I/O APIC`와 레거시 인터럽트 컨트롤러를 사용하지 않는지 확인합니다. 우리는 이미 `nr_legacy_irqs`에 대해 알고 있습니다. 두 번째는 [arch/x86/kernel/devicetree.c]에 정의 된 `of_ioapic` 변수이며, [devicetree](https://en.wikipedia.org/wiki/Device_tree)에서 `APICs` 에 대한 정보를 빌드하는 `dtb_ioapic_setup` 함수에서 초기화됩니다. `of_ioapic` 변수는 Linux 커널 설정 옵션 `CONFIG_OF` 에 따라 다릅니다. 이 옵션을 설정하지 않으면 `of_ioapic`의 값도 0이 됩니다 :
 
 
 ```C
