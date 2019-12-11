@@ -1,5 +1,4 @@
 Linux 커널의 타이머 및 시간 관리. Part 1.
-================================================================================
 
 소개
 --------------------------------------------------------------------------------
@@ -116,6 +115,7 @@ jiffies에 대한 숙지
 register_refined_jiffies(CLOCK_TICK_RATE);
 ```
 
+
 이 함수의 구현을 보기 전에 [jiffy](https://en.wikipedia.org/wiki/Jiffy_%28time%29)에 대해 알아야 합니다. wikipedia에서 읽을 수 있는 것처럼:
 
 ```
@@ -163,7 +163,6 @@ jiffies_64 = jiffies;
 ```
 
 이제 우리는 `jiffies`에 대한 약간의 이론을 알고 있으며 함수로 돌아갈 수 있습니다. 우리 함수에 대한 아키텍처 고유의 구현은 없습니다-`register_refined_jiffies`. 이 기능은 일반적인 커널 코드-[kernel / time / jiffies.c] 소스 코드 파일에 있습니다. `register_refined_jiffies`의 요점은 지피 `clocksource`의 등록입니다. `register_refined_jiffies`함수의 구현을 살펴보기 전에 `clocksource`가 무엇인지 알아야합니다. 주석에서 읽을 수 있듯이 :
-
 ```
 `clocksource` 는 프리-런닝 카운터를 위한 하드웨어 추상화입니다.
 ```
@@ -224,6 +223,7 @@ typedef u64 cycle_t;
 4.3e-08
 ```
 
+
 다음 두 필드 인 `mult`및 `shift`는 클럭 소스의 주기를 사이클 당 나노 초로 변환하는 데 사용됩니다. 커널이 `clocksource.read` 함수를 호출하면, 이 함수는 우리가 지금 본 `cycle_t` 데이터 타입으로 표현 된 `machine`시간 단위의 값을 반환합니다. 이 리턴 값을 [nanoseconds](https://en.wikipedia.org/wiki/Nanosecond)로 변환하려면 `mult`와 `shift`라는 두 필드가 필요합니다. `clocksource`는 `clocksource_cyc2ns` 함수를 제공하여 다음과 같은 식으로 우리에게 도움이됩니다:
 
 ```C
@@ -252,6 +252,7 @@ NSEC_PER_JIFFY << JIFFIES_SHIFT
 ```
 
 `jiffies` 클럭 소스는`NSEC_PER_JIFFY` 멀티 플라이어 변환을 사용하여 나노 초 오버 사이클 비율을 지정합니다. `JIFFIES_SHIFT` 및 `NSEC_PER_JIFFY`의 값은 `HZ`값에 따라 달라집니다. `HZ`는 시스템 타이머의 주파수를 나타냅니다. 이 매크로는 [include/asm-generic/param.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/asm-generic/param.h)에 정의되어 있으며 `CONFIG_HZ`에 따라 다릅니다. 커널 구성 옵션. `HZ`의 값은 지원되는 아키텍처마다 다르지만 `x86`의 경우 다음과 같이 정의됩니다:
+
 
 ```C
 #define HZ		CONFIG_HZ
@@ -296,6 +297,7 @@ int register_refined_jiffies(long cycles_per_second)
 	...
 	...
 ```
+
 
 여기서 우리는 `refined_jiffies`의 이름을 `refined-jiffies`로 업데이트하고 이 구조체의 등급을 높이는 것을 볼 수 있습니다. 기억하는 것처럼 `clocksource_jiffies`의 등급은 -1이며, 따라서 우리의 `refined_jiffies`의 클록 소스의 등급은 `2`입니다. 이는 `refined_jiffies`가 클럭 소스 관리 코드에 가장 적합한 선택임을 의미합니다.
 
