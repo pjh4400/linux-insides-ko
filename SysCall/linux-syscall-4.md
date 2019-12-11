@@ -113,7 +113,7 @@ if ((current->flags & PF_NPROC_EXCEEDED) &&
 current->flags &= ~PF_NPROC_EXCEEDED;
 ```
 
-이 두 가지 검사를 통과하면 `execve`가 실패하지 않도록 현재 프로세스의 플래그에 있는 `PF_NPROC_EXCEED` 플래그를 비활성화합니다. 그리고 보시다시피 다음 단계에서는 [kernel/fork.c](https://gitub.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d18e0b9d973/kernel/fork.c)에 정의되어 있는 `unshare_files` 기능을 호출하고 현재 작업 파일을 해제(unshare)하고, 이 함수의 결과를 체크합니다.
+이 두 가지 검사를 통과하면 `execve`가 실패하지 않도록 현재 프로세스의 플래그에 있는 `PF_NPROC_EXCEED` 플래그를 비활성화합니다. 그리고 보시다시피 다음 단계에서는 [kernel/fork.c](https://gitub.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d18e0b9d973/kernel/fork.c)에 정의되어 있는 `unshare_files` 함수를 호출하고 현재 작업 파일을 해제(unshare)하고, 이 함수의 결과를 체크합니다.
 
 ```C
 retval = unshare_files(&displaced);
