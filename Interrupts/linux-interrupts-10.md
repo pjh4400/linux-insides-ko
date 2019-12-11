@@ -6,13 +6,13 @@
 
 이것은 리눅스 커널에서 인터럽트 처리를 다루는 세 번째 파트입니다 [chapter](https://0xax.gitbooks.io/linux-insides/content/Interrupts/index.html)  그리고 이전 [파트](https://0xax.gitbooks.io/linux-insides/content/Interrupts/linux-interrupts-9.html)에서 우리는 지연된 인터럽트와 `softirq`, `tasklet` 및 `workqeue`와 같은 관련 개념에 대해 조금 보았습니다. 이 부분에서 우리는이 주제를 계속해서 살펴볼 것이며 이제 실제 하드웨어 드라이버를 살펴볼 차례입니다.
 
-예를 들어 [StrongARM ** SA-110 / 21285 평가 보드](http://netwinder.osuosl.org/pub/netwinder/docs/intel/datashts/27813501.pdf) 보드의 직렬 드라이버를 고려해 보자. 이 드라이버는 [IRQ](https://en.wikipedia.org/wiki/Interrupt_request_%28PC_architecture%29) 줄을 요청합니다.
-이 트리거의 소스 코드는 [drivers / tty / serial / 21285.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/drivers/에 있습니다. tty / serial / 21285.c) 소스 코드 파일. 소스코드를 갖고 있으므로, 시작합시다!
+예를 들어 [StrongARM ** SA-110 / 21285 Evaluation Board](http://netwinder.osuosl.org/pub/netwinder/docs/intel/datashts/27813501.pdf) 보드의 직렬 드라이버를 고려해 보자. 이 드라이버는 [IRQ](https://en.wikipedia.org/wiki/Interrupt_request_%28PC_architecture%29) 줄을 요청합니다.
+이 트리거의 소스 코드는 [drivers / tty / serial / 21285.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/drivers/tty/serial/21285.c)에 있습니다. 소스코드를 갖고 있으므로, 시작합시다!
 
 커널 모듈의 초기화
 --------------------------------------------------------------------------------
 
-우리는이 책에서 보았던 모든 새로운 개념으로 보통이 드라이버를 고려했을 것입니다. 우리는 그것을 초기화에서 고려하기 시작할 것입니다. 이미 알고 있듯이 Linux 커널은 드라이버 또는 커널 모듈의 초기화 및 마무리를위한 두 가지 매크로를 제공합니다.
+우리는 이 책에서 보았던 모든 새로운 개념으로 보통이 드라이버를 고려했을 것입니다. 우리는 그것을 초기화에서 고려하기 시작할 것입니다. 이미 알고 있듯이 Linux 커널은 드라이버 또는 커널 모듈의 초기화 및 마무리를 위한 두 가지 매크로를 제공합니다.
 
 * `module_init`;
 * `module_exit`.
@@ -77,7 +77,7 @@ static int __init serial21285_init(void)
 }
 ```
 
-보다시피, 먼저 드라이버에 대한 정보를 커널 버퍼에 인쇄하고 `serial21285_setup_ports` 함수를 호출합니다. 이 함수는 `serial21285_port`장치의 기본 [uart](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver/transmitter) 시계를 설정합니다.
+보다시피, 먼저 드라이버에 대한 정보를 커널 버퍼에 출력하고 `serial21285_setup_ports` 함수를 호출합니다. 이 함수는 `serial21285_port`장치의 기본 [uart](https://en.wikipedia.org/wiki/Universal_asynchronous_receiver/transmitter) 클락을 설정합니다.
 ```C
 unsigned int mem_fclk_21285 = 50000000;
 
@@ -87,7 +87,7 @@ static void serial21285_setup_ports(void)
 }
 ```
 
-`serial21285`는 `uart` 드라이버를 설명하는 구조입니다 :
+`serial21285`는 `uart` 드라이버를 설명하는 구조체입니다 :
 
 ```C
 static struct uart_driver serial21285_reg = {
@@ -101,7 +101,7 @@ static struct uart_driver serial21285_reg = {
 };
 ```
 
-드라이버가 성공적으로 등록되면 [drivers/tty/serial/serial_core.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/drivers/tty/serial/serial_core.c)의 `uart_add_one_port` 함수로 드라이버 정의 포트 `serial21285_port` 구조를 연결합니다  소스 코드 파일이며 `serial21285_init` 함수에서 반환됩니다.
+드라이버가 성공적으로 등록되면 [drivers/tty/serial/serial_core.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/drivers/tty/serial/serial_core.c)의 `uart_add_one_port` 함수로 드라이버 정의 포트 `serial21285_port` 구조체를 연결합니다  소스 코드 파일이며 `serial21285_init` 함수에서 반환됩니다.
 
 ```C
 if (ret == 0)
@@ -110,7 +110,7 @@ if (ret == 0)
 return ret;
 ```
 
-그게 전부입니다. 드라이버가 초기화되었습니다. [drivers/tty/serial/serial_core.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/drivers/tty/serial/serial_core.c)에서 `uart_open` 함수를 호출하여 `uart` 포트를 열 때 , `uart_startup` 함수를 호출하여 직렬 포트를 시작합니다. 이 함수는 `uart_ops` 구조의 일부인 `startup` 함수를 호출합니다. 각 `uart` 드라이버는이 구조에 대한 정의를 가지고 있습니다.
+그게 전부입니다. 드라이버가 초기화되었습니다. [drivers/tty/serial/serial_core.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/drivers/tty/serial/serial_core.c)에서 `uart_open` 함수를 호출하여 `uart` 포트를 열 때 , `uart_startup` 함수를 호출하여 직렬 포트를 시작합니다. 이 함수는 `uart_ops` 구조의 일부인 `startup` 함수를 호출합니다. 각 `uart` 드라이버는 이 구조체에 대한 정의를 가지고 있습니다.
 
 
 ```C

@@ -32,7 +32,7 @@ void __init early_trap_init(void)
 
 자, 우리는`# DB`와`# BP` 예외에 대해`early_trap_init` 함수에 예외 핸들러를 설정했으며 이제는 구현을 고려할 차례입니다. 그러나이 작업을 수행하기 전에 먼저 이러한 예외에 대한 세부 정보를 살펴 보겠습니다.
 
-첫 번째 예외 인`# DB` 또는`debug` 예외는 디버그 이벤트가 발생할 때 발생합니다. 예를 들어 [debug register](http://en.wikipedia.org/wiki/X86_debug_register)의 내용을 변경해보십시오. 디버그 레지스터는 [Intel 80386](http://en.wikipedia.org/wiki/Intel_80386) 프로세서에서 시작하여`x86` 프로세서에 제공되는 특수 레지스터이며,이 CPU 확장의 이름에서 알 수 있듯이 주 목적 이 레지스터 중 디버깅입니다.
+첫 번째 예외 인`# DB` 또는`debug` 예외는 디버그 이벤트가 발생할 때 발생합니다. 예를 들어 [debug register](http://en.wikipedia.org/wiki/X86_debug_register)의 내용을 변경해보십시오. 디버그 레지스터는 [Intel 80386](http://en.wikipedia.org/wiki/Intel_80386) 프로세서에서 시작하여`x86` 프로세서에 제공되는 특수 레지스터이며,이 CPU 확장의 이름에서 알 수 있듯이 이 레지스터의 주 목적은 디버깅입니다.
 
 이 레지스터를 사용하면 코드에서 중단 점을 설정하고 추적하기 위해 데이터를 읽거나 쓸 수 있습니다. 디버그 레지스터는 권한 모드에서만 액세스 할 수 있으며 다른 권한 수준에서 실행할 때 디버그 레지스터를 읽거나 쓰려고하면 [일반 보호 오류](https://en.wikipedia.org/wiki/General_protection_fault) 예외가 발생합니다. . 그래서 우리는`# DB` 예외에 `set_intr_gate_ist`를 사용했지만 `set_system_intr_gate_ist`는 사용하지 않았습니다.
 
