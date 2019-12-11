@@ -1,12 +1,9 @@
 커널 초기화. Part 1
-================================================================================
 
 커널 코드의 첫 단계
 --------------------------------------------------------------------------------
 
 이전 [포스트](https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-6.html)는 Linux 커널 [부팅 프로세스](https : // 0xax.gitbooks.io/linux-insides/content/Booting/index.html)챕터의 마지막 부분이었습니다. 그리고 이제 Linux 커널의 초기화 과정을 시작합니다. Linux 커널 이미지가 압축 해제되고 메모리의 올바른 위치에 배치되면 작동하기 시작합니다. 이전의 모든 부분에서는 Linux 커널 코드의 첫 바이트가 실행되기 전에 준비하는 Linux 커널 설정 코드의 작업에 대해 설명합니다. 이제 우리는 커널에 있으며 이 장에서는 [pid](https://en.wikipedia.org/wiki/Process_identifier) `1`로 프로세스를 시작하기 전에 커널의 초기화 과정에 집중 할 것입니다. 커널이 `init`프로세스를 시작하기 전에 해야 할 일이 많이 있습니다. 이 큰 장에서 커널이 시작되기 전에 모든 준비 과정을 보게되기를 바랍니다. [arch/x86/kernel/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S)에 있는 커널 진입 점에서 시작하겠습니다. [init/main.c](https://github.com/torvalds/linux/blob/master/init/main.c)에서 `start_kernel` 함수를 호출 되는 것을 보기 전에 초기 페이지 테이블 초기화, 커널 공간에서 새 디스크립터로 전환하는 등과 같은 첫 번째 준비를 살펴볼 것입니다.
-
-이전 [챕터](https://0xax.gitbooks.io/linux-insides/content/Booting/index.html)의 마지막 [부분](https://0xax.gitbooks.io/linux-insides/content/Booting/linux-bootstrap-6.html) [arch/x86/boot/compressed/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/boot/compressed/head_64.S) 어셈블리 소스 코드 파일의 점프 명령에서 멈췄습니다:
 
 ```assembly
 jmp	*%rax
@@ -512,6 +509,7 @@ struct gdt_page {
 	struct desc_struct gdt[GDT_ENTRIES];
 } __attribute__((aligned(PAGE_SIZE)));
 ```
+
 
 여기에는 다음과 같이 정의되는 `desc_struct` 구조체의 배열인 하나의 필드 `gdt`가 포함됩니다:
 

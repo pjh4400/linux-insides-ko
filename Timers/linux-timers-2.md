@@ -6,10 +6,13 @@
 
 이전 [파트](https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-1.html)는 리눅스 커널에서 타이머와 시간 관리에 관련된 것을 설명하는 현재 챕터의 첫 번째 파트였습니다. 우리는 이전 파트에서 두 가지 개념을 알게되었습니다:
 
+
   * `jiffies`
   * `clocksource`
 
+
 첫 번째는 [include/linux/jiffies.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/jiffies.h)헤더 파일에서 정의된 전역 변수이며 각 타이머 인터럽트 중 증가되는 카운터를 나타냅니다. 따라서 이 전역 변수에 접근할 수 있고 타이머 인터럽트 속도를 안다면 `jiffies`를 휴면 타임 유닛으로 변환할 수 있습니다. 우리가 이미 알고 있듯이 타이머 인터럽트 속도는 리눅스 커널에서 `HZ`라 불리는 컴파일-타임 상수로 표현됩니다. `HZ`의 값은 `CONFIG_HZ`커널 구성 옵션의 값과 같고 [arch/x86/configs/x86_64_defconfig](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/configs/x86_64_defconfig)커널 구성 파일을 보면, 다음을 볼 수 있습니다:
+
 
 ```
 CONFIG_HZ_1000=y
@@ -17,11 +20,13 @@ CONFIG_HZ_1000=y
 
 커널 구성 옵션을 설정했습니다. 이것은 `CONFIG_HZ`의 값이 [x86_64](https://en.wikipedia.org/wiki/X86-64)아키텍쳐에 대한 디폴트 `1000`임을 의미합니다. 그래서, `jiffies`의 값을 `HZ`의 값으로 나누면:
 
+
 ```
 jiffies / HZ
 ```
 
 우리는 리눅스 커널이 작동을 시작한 순간부터 경과한 시간을 얻거나 다른 말로 시스템 [업타임](https://en.wikipedia.org/wiki/Uptime)을 얻습니다. `HZ`는 타이머 인터럽트의 양을 초 단위로 나타내므로 앞으로 일정 시간 동안 값을 설정할 수 있습니다. 예시:
+
 
 ```C
 /* one minute from now */
@@ -32,6 +37,7 @@ unsigned long later = jiffies + 5*60*HZ;
 ```
 
 이것은 리눅스 커널에서 매우 일반적인 일입니다. 예를 들어, [arch/x86/kernel/smpboot.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/arch/x86/kernel/smpboot.c)소스 코드 파일을 살펴보면, `do_boot_cpu`함수를 찾을 수 있습니다. 이 함수는 bootstrap프로세서 외에도 모든 프로세서를 부팅합니다. 응용프로그램 프로세서에서 응답을 10초 기다리는 snippet를 찾을 수 있습니다:
+
 
 ```C
 if (!boot_error) {
@@ -51,6 +57,7 @@ if (!boot_error) {
 여기서 `jiffies + 10*HZ`값을 `timeout`변수에 할당합니다. 이미 이해했듯이, 이것은 10초의 시간 초과를 의미합니다. 그런 다음 `time_before`매크로를 사용하여 현재 `jiffies`값과 시간초과를 비교하는 루프를 시작합니다.
 
 또는 예를 들어 [Ensoniq Soundscape Elite](https://en.wikipedia.org/wiki/Ensoniq_Soundscape_Elite)사운드 카드에 대한 드라이버를 나타내는 [sound/isa/sscape.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/sound/isa/sscape)소스 코드 파일을 살펴보면, 그것의 시작 승인 시퀀스를 반환하는 On-Board 프로세에대해 주어진 시간초과를 기다리는 `obp_startup_ack`함수를 볼 수 있습니다:
+
 
 ```C
 static int obp_startup_ack(struct soundscape *s, unsigned timeout)
@@ -73,6 +80,7 @@ static int obp_startup_ack(struct soundscape *s, unsigned timeout)
 	return 0;
 }
 ```
+볼수 있듯이 `jiffies` 변수는 Linux kernel [code](http://lxr.free-electrons.com/ident?i=jiffies)에서 매우 넓게 사용됩니다. 제가 이미 적어놓은 것 처럼 우리는 이전 부분의 관련 개념인 `clocksource`에 아직 접하지 않았습니다. 우리는 이 개념과 `clocksource` 등록을 위한 API에 대한 짧은 설명을 봤을 뿐입니다.
 
 보시다시피, `jiffies`변수는 리눅스 커널 [코드](http://lxr.free-electrons.com/ident?i=jiffies)에서 매우 널리 사용됩니다. 이미 쓴 것처럼, 우리는 이전 파트의 `clocksource`와는 다른 새로운 시간 관리와 관련된 개념을 만났습니다. 우리는 이 개념의 간단한 설명과 클럭 소스 등록을 위한 API를 봤습니다. 이 파트에서 자세히 살펴봅시다.
 
@@ -93,6 +101,7 @@ static int obp_startup_ack(struct soundscape *s, unsigned timeout)
 --------------------------------------------------------------------------------
 
 `clocksource`프레임워크의 기본은 [include/linux/clocksource.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/clocksource.h)헤더파일에 정의된 `clocksource`구조체입니다. 우리는 이미 이전 [파트](https://0xax.gitbooks.io/linux-insides/content/Timers/linux-timers-1.html)에서 `clocksource`구조체가 제공하는 몇 가지 필드를 봤습니다. 이 구조체의 전체 정의을 살펴보고 모든 필드를 설명하겠습니다:
+
 
 ```C
 struct clocksource {
@@ -125,6 +134,7 @@ struct clocksource {
 
 우리는 이미 이전 파트에서 `clocksource`구조체의 첫 번째 필드를 봤습니다. 이것은 클럭 소스 프레임워크에서 선택한 최고의 카운터를 반환하는 `read`함수의 포인터입니다. 예를 들어 `jiffies_read`함수를 사용해 `jiffies`값을 읽습니다:
 
+
 ```C
 static struct clocksource clocksource_jiffies = {
 	...
@@ -134,6 +144,7 @@ static struct clocksource clocksource_jiffies = {
 ```
 
 여기서 `jiffies_read`을 반환합니다:
+
 
 ```C
 static cycle_t jiffies_read(struct clocksource *cs)
@@ -162,6 +173,7 @@ static struct clocksource clocksource_tsc = {
 ```C
 ((u64) cycles * mult) >> shift;
 ```
+이것은 `100%` 정확하진 않습니다. 대신에 숫자는 가능한한 1 나노초에 가까이 나타내고 `maxadj`는 이것을 수정하는 것을 도와주고 또한 클럭소스 API가 조정될때 오버플로가 발생할 수 있는 `mult` 값을 피할 수 있도록 해줍니다. 다음 4가지 필드는 함수에 대한 포인터입니다.
 
 `100%`정확하지는 않습니다. 대신 숫자는 가능한 한 나노 초에 가깝고, `maxadj`는 이를 수정하는데 도움이 되며, 클럭 소스 API가 조정됐을 때 오버플로 될 수 있는 `mult`값을 피하게 해줍니다. 다음 4개의 필드는 함수에 대한 포인터입니다:
 
@@ -173,6 +185,7 @@ static struct clocksource clocksource_tsc = {
 다음 필드는 `max_cycles`로 이름에서 알 수 있듯이, 이 필드는 잠재적 오버플로 이전의 최대 사이클 값을 나타냅니다. 그리고 마지막 필드는 `owner`로 클럭 소스의 소유자인 커널 [모듈](https://en.wikipedia.org/wiki/Loadable_kernel_module)에 대한 참조를 나타냅니다. 이것이 전부입니다. 우리는 `clocksource`구조체의 모든 표준 필드를 살펴보았습니다. 그러나 `clocksource` 구조체의 일부 필드를 놓친 것을 알 수 있습니다. 누락된 모든 필드는 두 타입으로 나눌 수 있습니다: 첫 번째 타입은 이미 알고 있습니다. 예를 들어, `clocksource`의 이름을 나타내는 `name`필드에서, `rating`필드는 리눅스 커널에이 최상의 클럭 소스 등을 선택하는데 도움이 됩니다. 두 번째 타입은, 다른 리눅스 커널 구성 옵션에 종속적인 필드입니다. 이 필드들을 살펴봅시다.
 
 첫 번째 필드는 `archdata`입니다. 이 필드는 `arch_clocksource_data`타입을 가졌으며`CONFIG_ARCH_CLOCKSOURCE_DATA` 커널 구성 옵션에 따라 다릅니다. 이 필드는 현재 [x86](https://en.wikipedia.org/wiki/X86) 및 [IA64](https://en.wikipedia.org/wiki/IA-64)에만 해당합니다. 또한 필드 이름에서 알 수 있듯이, 클럭 소스에 대한 아키텍처 특정 데이터를 나타냅니다. 예를 들어, `vDSO` 클럭 모드를 나타냅니다:
+
 
 ```C
 struct arch_clocksource_data {
@@ -218,6 +231,7 @@ static inline int clocksource_register_khz(struct clocksource *cs, u32 khz)
         return __clocksource_register_scale(cs, 1000, khz);
 }
 ```
+그리고 모든 함수들은 같은 일을 합니다. 그들은 `__clocksource_register_scale` 함수의 값을 돌려줍니다. 하지만 다른 매개변수 세트를 가지고 있습니다. `__clocksource_register_scale` 함수는 [kernel/time/clocksource.c](https://github.com/torvalds/linux/tree/master/kernel/time/clocksource.c) 소스코드 파일에 정의 되어 있습니다. 두가지 함수의 차이점을 이해하려면  `__clocksource_register_khz` 함수의 매개변수를 살펴보자. 우리가 볼 수 있듯이 이 함수는 세개의 매개변수를 갖습니다.
 
 그리고 이 모든 함수는 동일합니다. 이들은 `__clocksource_register_scale`함수의 값을 반환하지만 다른 매개 변수 설정을 사용합니다. `__clocksource_register_scale`는 [kernel/time/clocksource.c](https://github.com/torvalds/linux/tree/master/kernel/time/clocksource.c)소스 코드 파일에서 정의되었습니다. 함수들 사이의 차이를 이해하기 위해 `clocksource_register_khz`함수의 매개변수를 살펴봅시다. 보시다시피, 이 함수는 세 개의 매개변수를 가집니다:
 

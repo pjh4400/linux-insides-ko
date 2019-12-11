@@ -112,7 +112,7 @@ CPU 인터럽트에 반응하기 위해선 인터럽트 디스크립터 테이�
 
 여기서:
 
-* `Offset` - 인터럽트 핸들러의 엔트리 지점까지의 오프셋;
+* `Offset` - 인터럽트 핸들러의 엔트리 포인트까지의 오프셋;
 * `DPL` -    Descriptor Privilege Level (디스크립터 권한 레벨);
 * `P` -      세그먼트 존재여부(Present) 플래그;
 * `Segment selector` - GDT 또는 LDT의 코드 세그먼트 셀렉터
@@ -124,26 +124,26 @@ CPU 인터럽트에 반응하기 위해선 인터럽트 디스크립터 테이�
 * 인터럽트 게이트(Interrupt gate)
 * 트랩 게이트(Trap gate)
 
-Interrupt and trap gates contain a far pointer to the entry point of the interrupt handler. Only one difference between these types is how CPU handles `IF` flag. If interrupt handler was accessed through interrupt gate, CPU clear the `IF` flag to prevent other interrupts while current interrupt handler executes. After that current interrupt handler executes, CPU sets the `IF` flag again with `iret` instruction.
+ 인터럽트 및 트랩 게이트에는 인터럽트 핸들러의 엔트리 포인트에 대한 원거리 포인터(far pointer)가 포함되어 있습니다. 이 두 유형들 사이의 단 한 가지 차이점은 CPU가 'IF'플래그를 처리하는 방법입니다. 인터럽트 게이트를 통해 인터럽트 핸들러에 액세스한 경우 CPU는`IF` 플래그를 지워 현재 인터럽트 핸들러가 실행되는 동안 다른 인터럽트를 방지합니다. 현재 인터럽트 핸들러가 실행 된 후 CPU는`iret` 명령으로`IF` 플래그를 다시 설정합니다.
 
-Other bits in the interrupt descriptor is reserved and must be 0. Now let's look how CPU handles interrupts:
+인터럽트 디스크립터의 다른 비트는 예약되어 있으며 0이어야합니다. 이제 CPU가 인터럽트를 처리하는 방법을 살펴봅시다.
 
-* CPU save flags register, `CS`, and instruction pointer on the stack.
-* If interrupt causes an error code (like `#PF` for example), CPU saves an error on the stack after instruction pointer;
-* After interrupt handler executes, `iret` instruction will be used to return from it.
+* CPU는 플래그 레지스터,`CS` 및 명령어 포인터를 스택에 저장합니다.
+* 인터럽트가 에러 코드 (예시: `#PF`)를 유발하면 CPU는 스택의 명령 포인터 다음에 에러를 저장합니다.
+* 인터럽트 핸들러가 실행된 후에는, 다시 돌아오기 위해 `iret` 명령이 사용됩니다.
 
-Now let's back to code.
+이제 코드로 돌아가 봅시다.
 
-Fill and load IDT
+IDT 채우기 및 불러오기
 --------------------------------------------------------------------------------
 
-We stopped at the following function:
+우리는 다음 함수에서 멈췄습니다.
 
 ```C
 	idt_setup_early_handler();
 ```
 
-`idt_setup_early_handler` is defined in the [arch/x86/kernel/idt.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/idt.c) like the following:
+`idt_setup_early_handler`는 다음과 같이 [arch / x86 / kernel / idt.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/idt.c)에 정의되어 있습니다 :
 
 ```C
 void __init idt_setup_early_handler(void)
@@ -157,14 +157,14 @@ void __init idt_setup_early_handler(void)
 }
 ```
 
-where `NUM_EXCEPTION_VECTORS` expands to `32`. As we can see, We're filling only first 32 `IDT` entries in the loop, because all of the early setup runs with interrupts disabled, so there is no need to set up interrupt handlers for vectors greater than `32`. Here we call `set_intr_gate` in the loop, which takes two parameters:
+그리고 여기서 `NUM_EXCEPTION_VECTORS`는 `32`로 확장됩니다. 보시다시피, 우리는 루프에서 처음 32 개의 `IDT` 엔트리만 채우는데, 왜냐하면 초기 설정은 모두 인터럽트가 비활성화 된 상태로 실행되기 때문이고, 그렇기 때문에`32`보다 큰 벡터에 대해서는 인터럽트 핸들러를 설정할 필요가 없습니다. 여기 루프에서`set_intr_gate`를 호출하는데에는 두 개의 매개 변수가 필요합니다 :
 
-* Number of an interrupt or `vector number`;
-* Address of the idt handler.
+* 인터럽트 번호 또는 `vector number`;
+* idt 핸들러의 주소.
 
-and inserts an interrupt gate to the `IDT` table which is represented by the `&idt_descr` array. 
+그리고 `&idt_descr` 배열로 표현되는`IDT` 테이블에 인터럽트 게이트를 삽입합니다. 
 
-The `early_idt_handler_array` array is declaredd in the [arch/x86/include/asm/segment.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/segment.h) header file and contains addresses of the first `32` exception handlers:
+`early_idt_handler_array` 배열은 [arch / x86 / include / asm / segment.h](https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/segment.h)헤더 파일에 선언되어 있으며 처음 `32`개 예외(exception) 핸들러의 주소를 포함합니다.
 
 ```C
 #define EARLY_IDT_HANDLER_SIZE   9
@@ -173,9 +173,9 @@ The `early_idt_handler_array` array is declaredd in the [arch/x86/include/asm/se
 extern const char early_idt_handler_array[NUM_EXCEPTION_VECTORS][EARLY_IDT_HANDLER_SIZE];
 ```
 
-The `early_idt_handler_array` is `288` bytes array which contains address of exception entry points every nine bytes. Every nine bytes of this array consist of two bytes optional instruction for pushing dummy error code if an exception does not provide it, two bytes instruction for pushing vector number to the stack and five bytes of `jump` to the common exception handler code. You will see more detail in the next paragraph.
+`early_idt_handler_array`는`288` 바이트 배열이며 매 9 바이트마다 예외 엔트리 포인트의 주소를 가지고 있습니다. 이 배열의 모든 각각의 9 바이트는 예외가 오류 코드를 제공하지 않는 경우 더미 오류 코드를 푸시하기위한 2 바이트의 옵션 명령어, 벡터 번호를 스택으로 푸시하기위한 2 바이트 명령어 및 공통 예외 핸들러 코드로 `jump`하기 위한 5바이트의 명령어를 가지고 있습니다. 다음 단락에서 자세한 내용을 볼 수 있습니다.
 
-The `set_intr_gate` function is defined in the [arch/x86/kernel/idt.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/idt.c) source file and looks:
+`set_intr_gate` 함수는 [arch / x86 / kernel / idt.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/idt.c) 소스 파일에 정의되어 있으며 다음과 같습니다 :
 
 ```C
 static void set_intr_gate(unsigned int n, const void *addr)
@@ -195,7 +195,7 @@ static void set_intr_gate(unsigned int n, const void *addr)
 }
 ```
 
-First of all it checks that passed vector number is not greater than `255` with `BUG_ON` macro. We need to do this because we are limited to have up to `256` interrupts. After this, we fill the idt data with the given arguments and others, which will be passed to `idt_setup_from_table`. The `idt_setup_from_table` function is defined in the same file as the `set_intr_gate` function like the following:
+함수는 먼저 `BUG_ON` 매크로를 사용하여 전달 된 벡터 번호가 `255`보다 크지 않은지 확인합니다. 이는 최대 `256`개의 인터럽트를 갖도록 제한되어 있기 때문에 필요한 작업입니다. 그런 다음, 주어진 인자와 `idt_setup_from_table`로 전달된 다른 인자로 idt 데이터를 채웁니다. `idt_setup_from_table` 함수는 다음과 같이 `set_intr_gate` 함수와 동일한 파일에 정의되어 있습니다 :
 
 ```C
 static void
@@ -217,19 +217,19 @@ idt_setup_from_table(gate_desc *idt, const struct idt_data *t, int size, bool sy
 }
 ```
 
-which fill temporary idt descriptor with the given arguments and others. And then we just copy it to the certain element of the `idt_table` array. `idt_table` is an array of idt entries:
+위 함수는 주어진 인자 등으로 임시 idt 설명자를 채웁니다. 그런 다음 `idt_table` 배열의 특정 요소에 복사합니다. `idt_table`은 idt 엔트리의 배열입니다 :
 
 ```C
 gate_desc idt_table[IDT_ENTRIES] __page_aligned_bss;
 ```
 
-Now we are moving back to main loop code. After main loop finishes, we can load `Interrupt Descriptor table` with the call of the:
+이제 우리는 메인 루프 코드로 돌아갑니다. 메인 루프가 끝나면 :
 
 ```C
 	load_idt((const struct desc_ptr *)&idt_descr);
 ```
 
-where `idt_descr` is:
+-을 호출하여 `Interrupt Descriptor table`을 로드할 수 있습니다. 여기서 `idt_descr`는:
 
 ```C
 struct desc_ptr idt_descr __ro_after_init = {
@@ -238,18 +238,18 @@ struct desc_ptr idt_descr __ro_after_init = {
 };
 ```
 
-and `load_idt` just executes `lidt` instruction:
+이고, `load_idt`는 단지 `lidt` 명령을 실행합니다 :
 
 ```C
 	asm volatile("lidt %0"::"m" (idt_descr));
 ```
 
-Okay, now we have filled and loaded `Interrupt Descriptor Table`, we know how the CPU acts during an interrupt. So now time to deal with interrupts handlers.
+자 이제 우리는`Interrupt Descriptor Table`을 채우고 로드했으며, 인터럽트 동안 CPU가 어떻게 동작하는지 알고 있습니다. 이제 인터럽트 핸들러를 다룰 시간입니다.
 
-Early interrupts handlers
+초기 인터럽트 핸들러(Early interrupts handlers)
 --------------------------------------------------------------------------------
 
-As you can read above, we filled `IDT` with the address of the `early_idt_handler_array`. In this section, we are going to look into it in detail. We can find it in the [arch/x86/kernel/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S) assembly file:
+위에서 볼 수 있듯이, IDT는`early_idt_handler_array`의 주소로 채워졌습니다. 이 섹션에서는 이에 대해 더 자세히 살펴 보겠습니다. 이것은 [arch / x86 / kernel / head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S) 어셈블리 파일에서 찾아 볼 수 있습니다.
 
 ```assembly
 ENTRY(early_idt_handler_array)
@@ -271,7 +271,7 @@ ENTRY(early_idt_handler_array)
 END(early_idt_handler_array)
 ```
 
-We can see here, interrupt handlers generation for the first `32` exceptions. We check here, if exception has an error code then we do nothing, if exception does not return error code, we push zero to the stack. We do it for that stack was uniform. After that we push `vector number` on the stack and jump on the `early_idt_handler_common` which is generic interrupt handler for now. After all, every nine bytes of the `early_idt_handler_array` array consists of optional push of an error code, push of `vector number` and jump instruction to `early_idt_handler_common`. We can see it in the output of the `objdump` util:
+여기서 처음 `32`개 예외에 대한 인터럽트 핸들러 생성을 볼 수 있습니다. 여기를 살펴보면, 예외를 확인하고 예외에서 에러 코드가 있으면  아무것도 하지 않으며, 예외가 오류 코드를 반환하지 않으면 스택에 0을 푸시합니다. 이는 그 스택이 균일하기 때문입니다. 그런 다음 스택으로 '벡터 번호'를 푸시하고 일단 일반 인터럽트 핸들러(generic interrupt handler) 인 `early_idt_handler_common`으로 이동합니다. 결국, `early_idt_handler_array` 배열의 모든 각 9 바이트는 에러 코드의 선택적인 푸시, 벡터 번호(`vector number`)의 푸시 및 `early_idt_handler_common`으로의 점프 명령어로 구성되는 것입니다. `objdump` 유틸리티의 출력에서 이를 볼 수 있습니다 :
 
 ```
 $ objdump -D vmlinux
@@ -292,7 +292,7 @@ ffffffff81fe5014:       6a 02                   pushq  $0x2
 ...
 ```
 
-As we may know, CPU pushes flag register, `CS` and `RIP` on the stack before calling interrupt handler. So before `early_idt_handler_common` will be executed, stack will contain following data:
+아시다시피 CPU는 인터럽트 핸들러를 호출하기 전에 스택에서 플래그 레지스터, `CS`, `RIP`를 푸시합니다. 따라서 `early_idt_handler_common`이 실행되기 전에 스택에는 다음 데이터가 포함됩니다.
 
 ```
 |--------------------|
@@ -303,13 +303,13 @@ As we may know, CPU pushes flag register, `CS` and `RIP` on the stack before cal
 |--------------------|
 ```
 
-Now let's look on the `early_idt_handler_common` implementation. It locates in the same [arch/x86/kernel/head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S) assembly file. First of all we increment `early_recursion_flag` to prevent recursion in the `early_idt_handler_common`:
+이제`early_idt_handler_common` 구현을 살펴 봅시다. 이것도 동일한 [arch / x86 / kernel / head_64.S](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head_64.S) 어셈블리 파일에 있습니다. 가장 먼저, `early_idt_handler_common`에서 재귀를 막기 위해 `early_recursion_flag`를 증가시킵니다 :
 
 ```assembly
 	incl early_recursion_flag(%rip)
 ```
 
-Next we save general registers on the stack:
+다음으로 일반(general) 레지스터를 스택에 저장합니다.
 
 ```assembly
 	pushq %rsi
@@ -331,7 +331,7 @@ Next we save general registers on the stack:
 	UNWIND_HINT_REGS
 ```
 
-We need to do it to prevent wrong values of registers when we return from the interrupt handler. After this we check the vector number, and if it is `#PF` or [Page Fault](https://en.wikipedia.org/wiki/Page_fault), we put value from the `cr2` to the `rdi` register and call `early_make_pgtable` (we'll see it soon):
+인터럽트 핸들러에서 돌아올 때(리턴할 때) 레지스터 값이 잘못되는 것을 방지하기 위해 이를 수행해야합니다. 그 다음엔 벡터 번호를 확인하고 벡터 번호가`#PF` 혹은 [Page Fault](https://en.wikipedia.org/wiki/Page_fault)이면 `cr2`의 값을 `rdi`레지스터에 넣고 `early_make_pgtable`(이에 대해선 곧 보게 될 것입니다)을 호출합니다:
 
 ```assembly
 	cmpq $14,%rsi
@@ -342,7 +342,7 @@ We need to do it to prevent wrong values of registers when we return from the in
 	jz 20f
 ```
 
-otherwise we call `early_fixup_exception` function by passing kernel stack pointer:
+그렇지 않은 경우에는 커널 스택 포인터를 전달하여 `early_fixup_exception` 함수를 호출합니다.
 
 ```assembly
 10:
@@ -350,7 +350,7 @@ otherwise we call `early_fixup_exception` function by passing kernel stack point
 	call early_fixup_exception
 ```
 
-We'll see the implementaion of the `early_fixup_exception` function later.
+`early_fixup_exception` 함수의 구현은 나중에 보도록 합시다.
 
 ```assembly
 20:
@@ -358,16 +358,16 @@ We'll see the implementaion of the `early_fixup_exception` function later.
 	jmp restore_regs_and_return_to_kernel
 ```
 
-After we decrement the `early_recursion_flag`, we restore registers which we saved before from the stack and return from the handler with `iretq`.
+`early_recursion_flag`를 줄인 후에는, 이전에 스택에다 저장해둔 레지스터를 복원하고 `iretq`로 핸들러에서 돌아옵니다(리턴합니다).
 
-It is the end of the interrupt handler. We will examine the page fault handling and the other exception handling in order.
+이것으로 인터럽트 핸들러는 끝입니다. 이제부턴 페이지 결함 처리 및 기타 예외 처리를 순서대로 살펴 보겠습니다.
 
-Page fault handling
+페이지 오류(Page fault) 처리
 --------------------------------------------------------------------------------
 
-In the previous paragraph we saw the early interrupt handler which checks if the vector number is page fault and calls `early_make_pgtable` for building new page tables if it is. We need to have `#PF` handler in this step because there are plans to add ability to load kernel above `4G` and make access to `boot_params` structure above the 4G.
+이전 단락에서 벡터 번호가 페이지 오류인지 확인하고 새 페이지 테이블이 있는 경우 이를 새로 만들기(build) 위해 `early_make_pgtable`을 호출하는 초기 인터럽트 핸들러를 보았습니다. 이 단계에서 커널의 `4G` 이상을 로드하고 `4G` 이상의 `boot_params` 구조체에 액세스 할 수 있는 기능을 추가 할 계획이므로 이 단계에서는 `#PF` 핸들러가 필요합니다.
 
-You can find the implementation of `early_make_pgtable` in [arch/x86/kernel/head64.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head64.c) and takes one parameter - the value of `cr2` register, which contains the address caused page fault. Let's look on it:
+[arch / x86 / kernel / head64.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/head64.c)에서 `early_make_pgtable`의 구현을 찾아볼 수 있으며, 하나의 매개 변수-`cr2` 레지스터의 값으로, 페이지 오류를 일으킨 주소를 포함합니다-를 가지고 있음을 확인할 수 있습니다. 한 번 살펴 봅시다.
 
 ```C
 int __init early_make_pgtable(unsigned long address)
@@ -381,7 +381,7 @@ int __init early_make_pgtable(unsigned long address)
 }
 ```
 
-We initialize `pmd` and pass it to the `__early_make_pgtable` function along with `address`. The `__early_make_pgtable` function is defined in the same file as the `early_make_pgtable` function as the following:
+우리는 `pmd`를 초기화하고 `address`와 함께 `__early_make_pgtable` 함수에 전달합니다. `__early_make_pgtable` 함수는 다음과 같이`early_make_pgtable` 함수와 동일한 파일에 정의되어 있습니다:
 
 ```C
 int __init __early_make_pgtable(unsigned long address, pmdval_t pmd)
@@ -397,9 +397,9 @@ int __init __early_make_pgtable(unsigned long address, pmdval_t pmd)
 }
 ```
 
-It starts from the definition of some variables which have `*val_t` types. All of these types are declared as alias of `unsigned long` using `typedef`.
+이것은 `* val_t` 타입을 가진 일부 변수의 정의에서부터 시작합니다. 이 타입들은 모두 `typedef`를 사용하여 `unsigned long`의 별칭(alias)으로 선언됩니다.
 
-After we made the check that we have no invalid address, we're getting the address of the Page Global Directory entry which contains base address of Page Upper Directory and put its value to the `pgd` variable:
+유효하지 않은 주소가 없는지 확인한 후 페이지 상단 디렉토리(Page Upper Directory)의 기본 주소가 포함 된 페이지 전역 디렉토리(Page Global Directory) 엔트리의 주소를 가져 와서 그 값을 `pgd` 변수에 넣습니다.
 
 ```C
 again:
@@ -407,15 +407,15 @@ again:
 	pgd = *pgd_p;
 ```
 
-And we check if `pgd` is presented. If it is, we assign the base address of the page upper directory table to `pud_p`:
+그리고 `pgd`가 존재하는지 확인합니다. 만약 그렇다면, 페이지 상단 디렉토리 테이블의 기본 주소를`pud_p`에 할당합니다 :
 
 ```C
 	pud_p = (pudval_t *)((pgd & PTE_PFN_MASK) + __START_KERNEL_map - phys_base);
 ```
 
-where `PTE_PFN_MASK` is a macro which mask lower `12` bits of `(pte|pmd|pud|pgd)val_t`.
+여기서 `PTE_PFN_MASK`는`(pte|pmd|pud|pgd)val_t`의 하위 12 비트를 마스킹하는 매크로입니다.
 
-If `pgd` is not presented, we check if `next_early_pgt` is not greater than `EARLY_DYNAMIC_PAGE_TABLES` which is `64` and present a fixed number of buffers to set up new page tables on demand. If `next_early_pgt` is greater than `EARLY_DYNAMIC_PAGE_TABLES` we reset page tables and start again from `again` label. If `next_early_pgt` is less than `EARLY_DYNAMIC_PAGE_TABLES`, we assign the next entry of `early_dynamic_pgts` to `pud_p` and fill whole entry of the page upper directory with `0`, then fill the page global directory entry with the base address and some access rights:
+만약 `pgd`가 존재하지 않으면, 우리는 `next_early_pgt`가 `EARLY_DYNAMIC_PAGE_TABLES`의 `64`보다 크지 않은지 확인하고 요청시 새로운 페이지 테이블을 설정하기 위해 고정 된 수의 버퍼를 제공합니다. `next_early_pgt`가 `EARLY_DYNAMIC_PAGE_TABLES`보다 크다면 페이지 테이블을 재설정하고  `again` 라벨에서 다시 시작합니다. 만약 `next_early_pgt`가 `EARLY_DYNAMIC_PAGE_TABLES`보다 작다면, 다음 번 `early_dynamic_pgts`의 엔트리를 `pud_p`에 할당하고 페이지 상단 디렉토리의 전체 엔트리를 '0 '으로 채운 다음, 페이지 전역 디렉토리 엔트리를 기본 주소와 일부 접근 권한으로 채웁니다 :
 
 ```C
 	if (next_early_pgt >= EARLY_DYNAMIC_PAGE_TABLES) {
@@ -428,27 +428,27 @@ If `pgd` is not presented, we check if `next_early_pgt` is not greater than `EAR
 	*pgd_p = (pgdval_t)pud_p - __START_KERNEL_map + phys_base + _KERNPG_TABLE;
 ```
 
-And we fix `pud_p` to point to correct entry and assign its value to `pud` with the following:
+그리고 우리는`pud_p`를 올바른 엔트리를 가리키게 수정하고 그 값을`pud`에 다음과 같이 할당합니다 :
 
 ```C
 	pud_p += pud_index(address);
 	pud = *pud_p;
 ```
 
-And then we do the same routine as above, but to the page middle directory.
+그런 다음 페이지 중간 디렉토리(page middle directory)에 위와 동일한 루틴을 수행합니다.
 
-In the end we assign the given `pmd` which is passed by the `early_make_pgtable` function to the certain entry of page middle directory which maps kernel text+data virtual addresses:
+마지막으로 우리는 `early_make_pgtable` 함수에 의해 전달된 `pmd`를 커널 텍스트와 데이터 가상 주소를 매핑하는 페이지 중간 디렉토리의 특정 엔트리에 할당합니다 :
 
 ```C
 	pmd_p[pmd_index(address)] = pmd;
 ```
 
-After page fault handler finished its work, as a result, `early_top_pgt` contains entries which point to the valid addresses.
+페이지 오류 핸들러가 작업을 완료 한 후 그 결과로 `early_top_pgt`는 유효한 주소를 가리키는 엔트리가 담기게 됩니다.
 
-Other exception handling
+다른 예외 처리
 --------------------------------------------------------------------------------
 
-In early interrupt phase, exceptions other than page fault are handled by `early_fixup_exception` function which is defined in [arch/x86/mm/extable.c](https://github.com/torvalds/linux/blob/master/arch/x86/mm/extable.c) and takes two parameters - pointer to kernel stack which consists of saved registers and vector number:
+초기 인터럽트 단계에서 페이지 오류 이외의 예외들은 [arch/x86/mm/extable.c](https://github.com/torvalds/linux/blob/master/arch/x86/mm/extable.c)에 정의 된`early_fixup_exception` 함수로 처리되며 이 함수는 두 개의 매개 변수를 사용합니다 -저장된 레지스터를 가지고 있는 커널 스택에 대한 포인터, 그리고 벡터 번호 :
 
 ```C
 void __init early_fixup_exception(struct pt_regs *regs, int trapnr)
@@ -459,7 +459,7 @@ void __init early_fixup_exception(struct pt_regs *regs, int trapnr)
 }
 ```
 
-First of all we need to make some checks as the following:
+먼저 다음과 같이 몇가지를 확인해야합니다.
 
 ```C
 	if (trapnr == X86_TRAP_NMI)
@@ -472,16 +472,16 @@ First of all we need to make some checks as the following:
 		goto fail;
 ```
 
-Here we just ignore [NMI](https://en.wikipedia.org/wiki/Non-maskable_interrupt) and make sure that we are not in recursive situation.
+여기서는 [NMI](https://en.wikipedia.org/wiki/Non-maskable_interrupt)를 그냥 무시하고 재귀 상황이 아닌 것을 확실히 합니다.
 
-After that, we get into:
+그 다음은 다음과 같습니다:
 
 ```C
 	if (fixup_exception(regs, trapnr))
 		return;
 ```
 
-The `fixup_exception` function finds the actual handler and call it. It is defined in the same file as `early_fixup_exception` function as the following:
+`fixup_exception` 함수는 실제 핸들러를 찾아서 호출합니다. 이 함수는 다음과 같이 `early_fixup_exception` 함수와 동일한 파일에 정의되어 있습니다.
 
 ```C
 int fixup_exception(struct pt_regs *regs, int trapnr)
@@ -498,23 +498,23 @@ int fixup_exception(struct pt_regs *regs, int trapnr)
 }
 ```
 
-The `ex_handler_t` is a type of function pointer, which is defined like:
+`ex_handler_t`는 다음과 같이 정의된 함수 포인터 타입입니다.
 
 ```C
 typedef bool (*ex_handler_t)(const struct exception_table_entry *,
                             struct pt_regs *, int)
 ```
 
-The `search_exception_tables` function looks up the given address in the exception table (i.e. the contents of the ELF section, `__ex_table`). After that, we get the actual address by `ex_fixup_handler` function. At last we call actual handler. For more information about exception table, you can refer to [Documentation/x86/exception-tables.txt](https://github.com/torvalds/linux/blob/master/Documentation/x86/exception-tables.txt).
+`search_exception_tables` 함수는 예외 테이블(exception table)에서 주어진 주소를 찾습니다 (즉, ELF 섹션에서의`__ex_table`). 그 후, `ex_fixup_handler` 함수로 실제 주소를 얻습니다. 마지막으로 실제 핸들러를 호출합니다. 예외 테이블에 대한 자세한 내용은 [Documentation / x86 / exception-tables.txt](https://github.com/torvalds/linux/blob/master/Documentation/x86/exception-tables.txt)를 참고하세요.
 
-Let's get back to the `early_fixup_exception` function, the next step is:
+`early_fixup_exception` 함수로 돌아갑시다. 다음 단계는 다음과 같습니다:
 
 ```C
 	if (fixup_bug(regs, trapnr))
 		return;
 ```
 
-The `fixup_bug` function is defined in [arch/x86/kernel/traps.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/traps.c). Let's have a look on the function implementation:
+`fixup_bug` 함수는 [arch / x86 / kernel / traps.c](https://github.com/torvalds/linux/blob/master/arch/x86/kernel/traps.c)에 정의되어 있습니다. 함수의 구현에 대해 살펴봅시다.
 
 ```C
 int fixup_bug(struct pt_regs *regs, int trapnr)
@@ -536,16 +536,16 @@ int fixup_bug(struct pt_regs *regs, int trapnr)
 }
 ```
 
-All what this funtion does is just returns `1` if the exception is generated because `#UD` (or [Invalid Opcode](https://wiki.osdev.org/Exceptions#Invalid_Opcode)) occured and the `report_bug` function returns `BUG_TRAP_TYPE_WARN`, otherwise returns `0`.
+이 함수가 하는 일은 단지 `#UD` (또는 [Invalid Opcode](https://wiki.osdev.org/Exceptions#Invalid_Opcode))가 발생하고 `report_bug` 함수가 `BUG_TRAP_TYPE_WARN`을 리턴하여 예외가 발생하면 `1`을 반환하고 , 그렇지 않으면`0`을 반환하는 것입니다.
 
-Conclusion
+결론
 --------------------------------------------------------------------------------
 
-This is the end of the second part about linux kernel insides. If you have questions or suggestions, ping me in twitter [0xAX](https://twitter.com/0xAX), drop me [email](anotherworldofworld@gmail.com) or just create [issue](https://github.com/0xAX/linux-insides/issues/new). In the next part we will see all steps before kernel entry point - `start_kernel` function.
+이것으로 리눅스 커널 내부에 대한 두 번째 부분은 끝입니다. 만약 질문이나 의견이 있으시다면, 트위터에서 [0xAX](https://twitter.com/0xAX) 저를 핑해주시거나, [이메일](anotherworldofworld@gmail.com)을 보내주시거나, 또는 그냥 [이슈](https://github.com/0xAX/linux-insides/issues/new)를 생성해주세요. 다음 장에서는 커널 엔트리 포인트 이전의 모든 단계 `start_kernel` 함수를 살펴볼 것입니다.
 
-**Please note that English is not my first language and I am really sorry for any inconvenience. If you found any mistakes please send me PR to [linux-insides](https://github.com/0xAX/linux-insides).**
+**영어는 제 모국어가 아닙니다, 그리고 여타 불편하셨던 점에 대해서 정말로 사과드립니다. 만약 실수들을 찾아내셨다면 부디 [linux-insides 원본](https://github.com/0xAX/linux-internals)으로, 번역에 대해서는 [linux-insides 한국 번역](https://github.com/junsooo/linux-insides-ko)로 PR을 보내주세요.**
 
-Links
+링크 모음
 --------------------------------------------------------------------------------
 
 * [GNU assembly .rept](https://sourceware.org/binutils/docs-2.23/as/Rept.html)

@@ -166,7 +166,7 @@ lgdt gdt
 
 도식으로 나타내면 다음과 같습니다.
 
-![linear address](http://oi62.tinypic.com/2yo369v.jpg)
+![linear address](images/linear_address.png)
 
 리얼 모드에서 보호 모드로 전환하기 위한 알고리즘은 다음과 같습니다.
 
