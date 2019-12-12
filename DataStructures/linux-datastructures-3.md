@@ -1,10 +1,10 @@
-Data Structures in the Linux Kernel
+리눅스 커널의 여러 데이터 구조
 ================================================================================
 
-Bit arrays and bit operations in the Linux kernel
+리눅스 커널에서의 비트 배열과 비트 연산
 --------------------------------------------------------------------------------
 
-서로 다른 [linked](https://en.wikipedia.org/wiki/Linked_data_structure) 와 [tree](https://en.wikipedia.org/wiki/Tree_%28data_structure%29) 기반의 데이터 구조체 외에도 Linux 커널은 [bit arrays](https://en.wikipedia.org/wiki/Bit_array) 또는 `bitmap`에 [API](https://en.wikipedia.org/wiki/Application_programming_interface)를 제공합니다. 비트 배열은 Linux 커널에서 많이 사용되며 다음 소스 코드 파일에는 이러한 구조체로 작업하기 위한 공통 `API`가 포함됩니다.
+서로 다른 [linked](https://en.wikipedia.org/wiki/Linked_data_structure) 와 [tree](https://en.wikipedia.org/wiki/Tree_%28data_structure%29) 기반의 데이터 구조 외에도 Linux 커널은 [bit arrays](https://en.wikipedia.org/wiki/Bit_array) 또는 `bitmap`에 [API](https://en.wikipedia.org/wiki/Application_programming_interface)를 제공합니다. 비트 배열은 Linux 커널에서 많이 사용되며 다음 소스 코드 파일에는 이러한 구조로 작업하기 위한 공통 `API`가 포함됩니다.
 
 * [lib/bitmap.c](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/lib/bitmap.c)
 * [include/linux/bitmap.h](https://github.com/torvalds/linux/blob/16f73eb02d7e1765ccab3d2018e0bd98eb93d973/include/linux/bitmap.h)
@@ -87,8 +87,8 @@ static inline void __set_bit(long nr, volatile unsigned long *addr)
 
 보시다시피 두개의 매개변수를 가집니다. :
 
-* `nr` - number of bit in a bit array.
-* `addr` - address of a bit array where we need to set bit.
+* `nr` - 비트 배열의 비트 수;
+* `addr` -우리가 비트를 설정할 필요가 있는 비트 배열의 주소.
 
 `addr` 파라미터는 `volatile` 키워드로 정의되어 주어진 주소에 의해 값이 변경 될 수 있음을 컴파일러에 알려줍니다. `__set_bit`의 구현은 매우 쉽습니다. 보시다시피 한 줄의 [inline assembler](https://en.wikipedia.org/wiki/Inline_assembler) 코드만 포함되어 있습니다. 우리의 경우 비트 배열에서 첫 번째 피연산자 (우리의 경우 `nr`)로 지정된 비트를 선택하고 선택된 비트의 값을 [CF](https://en.wikipedia.org/wiki/FLAGS_register) 플래그 레지스터에 저장하는 [bts](http://x86.renejeschke.de/html/file_module_x86_id_25.html)  명령어를 사용합니다. 이 비트를 설정하세요.
 
