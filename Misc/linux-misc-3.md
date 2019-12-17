@@ -1,7 +1,7 @@
 소개
 ---------------
 
-[linux-insides](https://0xax.gitbooks.io/linux-insides/content/) 책을 쓰는 중에 [링커](https://en.wikipedia.org/wiki/Linker_ %28computing%29) 스크립트 및 링커 관련 주제와 관련된 질문이 있는 많은 이메일을 받았습니다. 그래서 나는 링커의 일부 측면과 객체 파일의 링크를 다루기 위해 이것을 작성하기로 결정했습니다.
+[linux-insides](https://0xax.gitbooks.io/linux-insides/content/) 책을 쓰는 중에 [링커](https://en.wikipedia.org/wiki/Linker_%28computing%29) 스크립트 및 링커 관련 주제와 관련된 질문이 있는 많은 이메일을 받았습니다. 그래서 나는 링커의 일부 측면과 객체 파일의 링크를 다루기 위해 이것을 작성하기로 결정했습니다.
 
 Wikipedia에서 `링커` 페이지를 열면 다음과 같은 정의가 나타납니다:
 
